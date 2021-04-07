@@ -176,6 +176,8 @@ static void process(i80 insn)
         inr(insn);
     else if (op == "dcr")
         dcr(insn);
+    else if (op == "mvi")
+        mvi(insn);
     else if (op == "rlc")
         rlc(insn);
     else if (op == "dad")
@@ -416,12 +418,12 @@ static void dcr(i80 insn)
 }
 
 /**
- * mvi (0x06 + 8 bit register offset)
+ * mvi (0x06 + (8 bit register offset << 3))
  */
 static void mvi(i80 insn)
 {
     assert(!insn.a1.empty && !insn.a2.empty);
-    passAct(2, 0x06 + regMod8(insn.a1), insn);
+    passAct(2, 0x06 + (regMod8(insn.a1) << 3), insn);
     imm(insn, IMM8);
 }
 
@@ -1203,14 +1205,14 @@ static void imm(i80 insn, int immtype)
         dig = to!ushort(chop(check), 16);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
-            if (insn.a2 == stab[i].name) {
+            if (check == stab[i].name) {
                 dig = stab[i].value;
                 found = true;
                 break;
             }
         }
         if (!found) {
-            stderr.writefln("a80: label %s not defined", insn.a2);
+            stderr.writefln("a80: label %s not defined", check);
             assert(0);
         }
     }
