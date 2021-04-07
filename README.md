@@ -60,13 +60,6 @@ All numbers must be in hex and must end with an `h`. If a hex
 number begins with `a-f`, it must be prefixed with `0`. This is not
 too dissimilar from other CP/M assemblers.
 
-Errors
-------
-Errors immediately terminate `a80` through the use of assertions.
-Most but not all errors include a diagnostic. Missing diagnostics
-will be added in the future. Please file a bug report if you
-encounter this.
-
 Strings
 -------
 The `DB` pseudo-op is available, but single characters and/or bytes

@@ -7,6 +7,12 @@ import std.algorithm;
 import std.string;
 import std.ascii;
 import std.conv;
+import std.exception;
+
+/**
+ * Line number.
+ */
+static size_t line;
 
 /**
  * Pass.
@@ -115,19 +121,19 @@ void assemble(string[] s, string name)
 {
     /* Pass 1 */
     pass = 1;
-    for (size_t i = 0; i < s.length; i++) {
+    for (line = 0; line < s.length; line++) {
         i80 insn = new i80;
 
-        insn.parse(s[i]);
+        insn.parse(s[line]);
         process(insn);
     }
 
     /* Pass 2 */
     pass = 2;
-    for (size_t i = 0; i < s.length; i++) {
+    for (line = 0; line < s.length; line++) {
         i80 insn = new i80;
 
-        insn.parse(s[i]);
+        insn.parse(s[line]);
         process(insn);
     }
 
@@ -323,7 +329,7 @@ static void process(i80 insn)
     else if (op == "db")
         db(insn);
     else
-        assert(0);
+        err("unknown opcode: " ~ op);
 }
 
 /**
@@ -347,10 +353,8 @@ static void passAct(ushort a, int b, i80 insn)
 static void addsym(string lab, ushort a)
 {
     for (size_t i = 0; i < stab.length; i++) {
-        if (lab == stab[i].name) {
-            stderr.writefln("a80: duplicate label %s", lab);
-            assert(0);
-        }
+        if (lab == stab[i].name)
+            err("duplicate label: " ~ lab);
     }
 
     symtab nsym = { lab, a };
@@ -362,7 +366,7 @@ static void addsym(string lab, ushort a)
  */
 static void nop(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x00, insn);
 }
 
@@ -371,7 +375,7 @@ static void nop(i80 insn)
  */
 static void lxi(i80 insn)
 {
-    assert(!insn.a1.empty && !insn.a2.empty);
+    argcheck(!insn.a1.empty && !insn.a2.empty);
     passAct(3, 0x01 + regMod16(insn), insn);
     imm(insn, IMM16);
 }
@@ -381,13 +385,13 @@ static void lxi(i80 insn)
  */
 static void stax(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     if (insn.a1 == "b")
         passAct(1, 0x02, insn);
     else if (insn.a1 == "d")
         passAct(1, 0x12, insn);
     else
-        assert(0);
+        err("stax only takes b or d");
 }
 
 /**
@@ -395,7 +399,7 @@ static void stax(i80 insn)
  */
 static void inx(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x03 + regMod16(insn), insn);
 }
 
@@ -404,7 +408,7 @@ static void inx(i80 insn)
  */
 static void inr(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x04 + regMod8(insn.a1), insn);
 }
 
@@ -413,7 +417,7 @@ static void inr(i80 insn)
  */
 static void dcr(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x05 + regMod8(insn.a1), insn);
 }
 
@@ -422,7 +426,7 @@ static void dcr(i80 insn)
  */
 static void mvi(i80 insn)
 {
-    assert(!insn.a1.empty && !insn.a2.empty);
+    argcheck(!insn.a1.empty && !insn.a2.empty);
     passAct(2, 0x06 + (regMod8(insn.a1) << 3), insn);
     imm(insn, IMM8);
 }
@@ -432,7 +436,7 @@ static void mvi(i80 insn)
  */
 static void rlc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x07, insn);
 }
 
@@ -441,7 +445,7 @@ static void rlc(i80 insn)
  */
 static void dad(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x09 + regMod16(insn), insn);
 }
 
@@ -450,13 +454,13 @@ static void dad(i80 insn)
  */
 static void ldax(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     if (insn.a1 == "b")
         passAct(1, 0x0a, insn);
     else if (insn.a1 == "d")
         passAct(1, 0x1a, insn);
     else
-        assert(0);
+        err("ldax only takes b or d");
 }
 
 /**
@@ -464,7 +468,7 @@ static void ldax(i80 insn)
  */
 static void dcx(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x0b + regMod16(insn), insn);
 }
 
@@ -473,7 +477,7 @@ static void dcx(i80 insn)
  */
 static void rrc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x0f, insn);
 }
 
@@ -482,7 +486,7 @@ static void rrc(i80 insn)
  */
 static void ral(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x17, insn);
 }
 
@@ -491,7 +495,7 @@ static void ral(i80 insn)
  */
 static void rar(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x1f, insn);
 }
 
@@ -500,7 +504,7 @@ static void rar(i80 insn)
  */
 static void shld(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0x22, insn);
     a16(insn);
 }
@@ -510,7 +514,7 @@ static void shld(i80 insn)
  */
 static void daa(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x27, insn);
     imm(insn, IMM16);
 }
@@ -520,7 +524,7 @@ static void daa(i80 insn)
  */
 static void lhld(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0x2a, insn);
     a16(insn);
 }
@@ -530,7 +534,7 @@ static void lhld(i80 insn)
  */
 static void cma(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x2f, insn);
 }
 
@@ -539,7 +543,7 @@ static void cma(i80 insn)
  */
 static void sta(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0x32, insn);
     a16(insn);
 }
@@ -549,7 +553,7 @@ static void sta(i80 insn)
  */
 static void stc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x37, insn);
 }
 
@@ -558,7 +562,7 @@ static void stc(i80 insn)
  */
 static void lda(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0x3a, insn);
     a16(insn);
 }
@@ -568,7 +572,7 @@ static void lda(i80 insn)
  */
 static void cmc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x3f, insn);
 }
 
@@ -579,7 +583,7 @@ static void cmc(i80 insn)
  */
 static void mov(i80 insn)
 {
-    assert(!insn.a1.empty && !insn.a2.empty);
+    argcheck(!insn.a1.empty && !insn.a2.empty);
     passAct(1, 0x40 + (regMod8(insn.a1) << 3) + regMod8(insn.a2), insn);
 }
 
@@ -588,7 +592,7 @@ static void mov(i80 insn)
  */
 static void hlt(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x76, insn);
 }
 
@@ -597,7 +601,7 @@ static void hlt(i80 insn)
  */
 static void add(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x80 + regMod8(insn.a1), insn);
 }
 
@@ -606,7 +610,7 @@ static void add(i80 insn)
  */
 static void adc(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x88 + regMod8(insn.a1), insn);
 }
 
@@ -615,7 +619,7 @@ static void adc(i80 insn)
  */
 static void sub(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x90 + regMod8(insn.a1), insn);
 }
 
@@ -624,7 +628,7 @@ static void sub(i80 insn)
  */
 static void sbb(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0x98 + regMod8(insn.a1), insn);
 }
 
@@ -633,7 +637,7 @@ static void sbb(i80 insn)
  */
 static void ana(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xa0 + regMod8(insn.a1), insn);
 }
 
@@ -642,7 +646,7 @@ static void ana(i80 insn)
  */
 static void xra(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xa8 + regMod8(insn.a1), insn);
 }
 
@@ -651,7 +655,7 @@ static void xra(i80 insn)
  */
 static void ora(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xb0 + regMod8(insn.a1), insn);
 }
 
@@ -660,7 +664,7 @@ static void ora(i80 insn)
  */
 static void cmp(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xb8 + regMod8(insn.a1), insn);
 }
 
@@ -669,7 +673,7 @@ static void cmp(i80 insn)
  */
 static void rnz(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xc0, insn);
 }
 
@@ -678,7 +682,7 @@ static void rnz(i80 insn)
  */
 static void pop(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xc1 + regMod16(insn), insn);
 }
 
@@ -687,7 +691,7 @@ static void pop(i80 insn)
  */
 static void jnz(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xc2, insn);
     a16(insn);
 }
@@ -697,7 +701,7 @@ static void jnz(i80 insn)
  */
 static void jmp(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xc3, insn);
     a16(insn);
 }
@@ -707,7 +711,7 @@ static void jmp(i80 insn)
  */
 static void cnz(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xc4, insn);
     a16(insn);
 }
@@ -717,7 +721,7 @@ static void cnz(i80 insn)
  */
 static void push(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(1, 0xc5 + regMod16(insn), insn);
 }
 
@@ -726,7 +730,7 @@ static void push(i80 insn)
  */
 static void adi(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xc6, insn);
     imm(insn, IMM8);
 }
@@ -736,12 +740,12 @@ static void adi(i80 insn)
  */
 static void rst(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     auto offset = to!int(insn.a1, 10);
     if (offset >= 0 && offset <= 7)
         passAct(1, 0xc7 + (offset * 8), insn);
     else
-        assert(0);
+        err("invalid reset vector: " ~ to!string(offset));
 }
 
 /**
@@ -749,7 +753,7 @@ static void rst(i80 insn)
  */
 static void rz(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xc8, insn);
 }
 
@@ -758,7 +762,7 @@ static void rz(i80 insn)
  */
 static void jz(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xca, insn);
     a16(insn);
 }
@@ -768,7 +772,7 @@ static void jz(i80 insn)
  */
 static void cz(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xcc, insn);
     a16(insn);
 }
@@ -778,7 +782,7 @@ static void cz(i80 insn)
  */
 static void call(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xcd, insn);
     a16(insn);
 }
@@ -788,7 +792,7 @@ static void call(i80 insn)
  */
 static void aci(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xce, insn);
     imm(insn, IMM8);
 }
@@ -798,7 +802,7 @@ static void aci(i80 insn)
  */
 static void rnc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xd0, insn);
 }
 
@@ -807,7 +811,7 @@ static void rnc(i80 insn)
  */
 static void jnc(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xd2, insn);
     a16(insn);
 }
@@ -817,7 +821,7 @@ static void jnc(i80 insn)
  */
 static void i80_out(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xd3, insn);
     imm(insn, IMM8);
 }
@@ -827,7 +831,7 @@ static void i80_out(i80 insn)
  */
 static void cnc(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xd4, insn);
     a16(insn);
 }
@@ -837,7 +841,7 @@ static void cnc(i80 insn)
  */
 static void sui(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xd6, insn);
     imm(insn, IMM8);
 }
@@ -847,7 +851,7 @@ static void sui(i80 insn)
  */
 static void rc(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xd8, insn);
 }
 
@@ -856,7 +860,7 @@ static void rc(i80 insn)
  */
 static void jc(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xda, insn);
     a16(insn);
 }
@@ -866,7 +870,7 @@ static void jc(i80 insn)
  */
 static void i80_in(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xdb, insn);
     imm(insn, IMM8);
 }
@@ -876,7 +880,7 @@ static void i80_in(i80 insn)
  */
 static void cc(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xdc, insn);
     a16(insn);
 }
@@ -886,7 +890,7 @@ static void cc(i80 insn)
  */
 static void sbi(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xde, insn);
     imm(insn, IMM8);
 }
@@ -896,7 +900,7 @@ static void sbi(i80 insn)
  */
 static void rpo(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xe0, insn);
 }
 
@@ -905,7 +909,7 @@ static void rpo(i80 insn)
  */
 static void jpo(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xe2, insn);
     a16(insn);
 }
@@ -915,7 +919,7 @@ static void jpo(i80 insn)
  */
 static void xthl(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xe3, insn);
 }
 
@@ -924,7 +928,7 @@ static void xthl(i80 insn)
  */
 static void cpo(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xe4, insn);
     a16(insn);
 }
@@ -934,7 +938,7 @@ static void cpo(i80 insn)
  */
 static void ani(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xe6, insn);
     imm(insn, IMM8);
 }
@@ -944,7 +948,7 @@ static void ani(i80 insn)
  */
 static void rpe(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xe8, insn);
 }
 
@@ -953,7 +957,7 @@ static void rpe(i80 insn)
  */
 static void pchl(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xe9, insn);
 }
 
@@ -962,7 +966,7 @@ static void pchl(i80 insn)
  */
 static void jpe(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xea, insn);
     a16(insn);
 }
@@ -972,7 +976,7 @@ static void jpe(i80 insn)
  */
 static void xchg(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xeb, insn);
 }
 
@@ -981,7 +985,7 @@ static void xchg(i80 insn)
  */
 static void cpe(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xec, insn);
     a16(insn);
 }
@@ -991,7 +995,7 @@ static void cpe(i80 insn)
  */
 static void xri(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xee, insn);
     imm(insn, IMM8);
 }
@@ -1001,7 +1005,7 @@ static void xri(i80 insn)
  */
 static void rp(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xf0, insn);
 }
 
@@ -1010,7 +1014,7 @@ static void rp(i80 insn)
  */
 static void jp(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xf2, insn);
     a16(insn);
 }
@@ -1020,7 +1024,7 @@ static void jp(i80 insn)
  */
 static void di(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xf3, insn);
 }
 
@@ -1029,7 +1033,7 @@ static void di(i80 insn)
  */
 static void cp(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xf4, insn);
     a16(insn);
 }
@@ -1039,7 +1043,7 @@ static void cp(i80 insn)
  */
 static void ori(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xf6, insn);
     imm(insn, IMM8);
 }
@@ -1049,7 +1053,7 @@ static void ori(i80 insn)
  */
 static void rm(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xf8, insn);
 }
 
@@ -1058,7 +1062,7 @@ static void rm(i80 insn)
  */
 static void sphl(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xf9, insn);
 }
 
@@ -1067,7 +1071,7 @@ static void sphl(i80 insn)
  */
 static void jm(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xfa, insn);
     a16(insn);
 }
@@ -1077,7 +1081,7 @@ static void jm(i80 insn)
  */
 static void ei(i80 insn)
 {
-    assert(insn.a1.empty && insn.a2.empty);
+    argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xfb, insn);
 }
 
@@ -1086,7 +1090,7 @@ static void ei(i80 insn)
  */
 static void cm(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(3, 0xfc, insn);
     a16(insn);
 }
@@ -1096,7 +1100,7 @@ static void cm(i80 insn)
  */
 static void cpi(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     passAct(2, 0xfe, insn);
     imm(insn, IMM8);
 }
@@ -1106,13 +1110,11 @@ static void cpi(i80 insn)
  */
 static void equ(i80 insn)
 {
-    if (insn.lab.empty) {
-        stderr.writeln("a80: must have a label in equ statement");
-        assert(0);
-    }
+    if (insn.lab.empty)
+        err("must have a label in equ statement");
 
     if (insn.a1[insn.a1.length - 1] != 'h')
-        assert(0);
+        err("number must end with 'h'");
     auto a = to!ushort(chop(insn.a1), 16);
     if (pass == 1)
        addsym(insn.lab, a);
@@ -1124,10 +1126,10 @@ static void equ(i80 insn)
  */
 static void db(i80 insn)
 {
-    assert(!insn.a1.empty && insn.a2.empty);
+    argcheck(!insn.a1.empty && insn.a2.empty);
     if (isDigit(insn.a1[0])) {
         if (insn.a1[insn.a1.length - 1] != 'h')
-            assert(0);
+            err("number must end with 'h'");
         passAct(1, to!ubyte(chop(insn.a1), 16), insn);
     } else {
         passAct(1, to!ubyte(insn.a1[0]), insn);
@@ -1149,15 +1151,18 @@ static int regMod16(i80 insn)
         if (insn.op == "pop" || insn.op == "push")
             return 0x30;
         else
-            assert(0);
+            err("psw may not be used with " ~ insn.op);
     } else if (insn.a1 == "sp") {
         if (insn.op != "pop" && insn.op != "push")
             return 0x30;
         else
-            assert(0);
+            err("sp may not be used with " ~ insn.op);
     } else {
-        assert(0);
+        err("invalid register for " ~ insn.op);
     }
+
+    /* This will never be reached, but quiets gdc.  */
+    return 0;
 }
 
 /**
@@ -1182,7 +1187,10 @@ static int regMod8(string reg)
     else if (reg == "a")
         return 0x07;
     else
-        assert(0);
+        err("invalid register " ~ reg);
+
+    /* This will never be reached, but quiets gdc.  */
+    return 0;
 }
 
 /**
@@ -1201,7 +1209,7 @@ static void imm(i80 insn, int immtype)
 
     if (isDigit(check[0])) {
         if (check[check.length - 1] != 'h')
-            assert(0);
+            err("number must end with 'h'");
         dig = to!ushort(chop(check), 16);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
@@ -1211,10 +1219,8 @@ static void imm(i80 insn, int immtype)
                 break;
             }
         }
-        if (!found) {
-            stderr.writefln("a80: label %s not defined", check);
-            assert(0);
-        }
+        if (!found)
+            err("label " ~ check ~ " not defined");
     }
 
     if (pass == 2) {
@@ -1234,7 +1240,7 @@ static void a16(i80 insn)
 
     if (isDigit(insn.a1[0])) {
         if (insn.a1[insn.a1.length - 1] != 'h')
-            assert(0);
+            err("number must end with 'h'");
         dig = to!ushort(chop(insn.a1), 16);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
@@ -1244,14 +1250,30 @@ static void a16(i80 insn)
                 break;
             }
         }
-        if (!found) {
-            stderr.writefln("a80: label %s not defined", insn.a1);
-            assert(0);
-        }
+        if (!found)
+            stderr.writefln("label " ~ insn.a1 ~ " not defined");
     }
 
     if (pass == 2) {
         output ~= cast(ubyte)(dig & 0xff);
         output ~= cast(ubyte)((dig >> 8) & 0xff);
     }
+}
+
+/**
+ * Nice error messages.
+ */
+static void err(string msg)
+{
+    writeln("a80: " ~ to!string(line + 1) ~ ": " ~ msg);
+    enforce(0);
+}
+
+/**
+ * Check arguments.
+ */
+static void argcheck(bool passed)
+{
+    if (passed == false)
+        err("arguments not correct for opcode");
 }
