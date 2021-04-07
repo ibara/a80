@@ -67,6 +67,12 @@ Most but not all errors include a diagnostic. Missing diagnostics
 will be added in the future. Please file a bug report if you
 encounter this.
 
+Strings
+-------
+The `DB` pseudo-op is available, but single characters and/or bytes
+only right now. Sorry. You can put in characters without quotes
+though. See `fib.asm` for an example.
+
 License
 -------
 ISC license. See `LICENSE` for more information.

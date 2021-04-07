@@ -16,3 +16,17 @@ start:
 	mov	a, c
 	mov	c, b
 	jmp	again	; jump to again
+msg:	db	H
+	db	e
+	db	l
+	db	l
+	db	o
+	db	20h
+	db	W
+	db	o
+	db	r
+	db	l
+	db	d
+	db	!
+	db	10h
+	db	00h

@@ -318,6 +318,8 @@ static void process(i80 insn)
         cpi(insn);
     else if (op == "equ")
         equ(insn);
+    else if (op == "db")
+        db(insn);
     else
         assert(0);
 }
@@ -1112,6 +1114,22 @@ static void equ(i80 insn)
     auto a = to!ushort(chop(insn.a1), 16);
     if (pass == 1)
        addsym(insn.lab, a);
+}
+
+/**
+ * Place a byte.
+ * Sorry, no strings (yet).
+ */
+static void db(i80 insn)
+{
+    assert(!insn.a1.empty && insn.a2.empty);
+    if (isDigit(insn.a1[0])) {
+        if (insn.a1[insn.a1.length - 1] != 'h')
+            assert(0);
+        passAct(1, to!ubyte(chop(insn.a1), 16), insn);
+    } else {
+        passAct(1, to!ubyte(insn.a1[0]), insn);
+    }
 }
 
 /**
