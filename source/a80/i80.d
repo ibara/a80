@@ -117,6 +117,11 @@ class i80
                 if (!opFix[1].empty) {
                     op = strip(opFix[0]);
                     a1 = strip(opFix[2]);
+                } else {
+                    if (op.empty && !a1.empty && a2.empty) {
+                        op = a1;
+                        a1 = null;
+                    }
                 }
             }
         }

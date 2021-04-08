@@ -2,24 +2,28 @@
 ; Results in b
 	org	100h	; We are CP/M
 
-again:	equ	107h	; Just to show it works
+label:	equ	108h	; Just to show it works
 
 start:
+	nop
 	xra	a	; zero out a
 	mov	b, a	; b = a
 	mov	c, a	; c = a
 	adi	01h	; a = a + 1
 	mov	c, a	; c = a
 	xra	a	; zero out a
-	add	c	; a = a + c
-	cmp	c
+loop:	add	c	; a = a + c
+comp:	cmp	c
 	jc	start	; jump if carry
 	mov	b, a
 	mov	a, c
 	mov	c, b
-	jmp	again	; jump to again
+	jmp	loop	; jump to loop
+
+; Everything below here is garbage just to test the assembler.
+rar:	rar
 	jmp	msg
-	lxi	sp, 0efdch
+more:	lxi	sp, 0efdch
 	shld	7fffh
 	mvi	c, 80h
 	ldax	d
