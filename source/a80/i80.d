@@ -270,6 +270,8 @@ static void process(i80 insn)
         rst(insn);
     else if (op == "rz")
         rz(insn);
+    else if (op == "ret")
+        ret(insn);
     else if (op == "jz")
         jz(insn);
     else if (op == "cz")
@@ -424,7 +426,7 @@ static void inx(i80 insn)
 }
 
 /**
- * inr (0x04 + 8 bit register offset)
+ * inr (0x04 + (8 bit register offset << 3))
  */
 static void inr(i80 insn)
 {
@@ -433,12 +435,12 @@ static void inr(i80 insn)
 }
 
 /**
- * dcr (0x05 + 8 bit register offset)
+ * dcr (0x05 + (8 bit register offset << 3))
  */
 static void dcr(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x05 + regMod8(insn.a1), insn);
+    passAct(1, 0x05 + (regMod8(insn.a1) << 3), insn);
 }
 
 /**
@@ -775,6 +777,15 @@ static void rz(i80 insn)
 {
     argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0xc8, insn);
+}
+
+/**
+ * ret (0xc9)
+ */
+static void ret(i80 insn)
+{
+    argcheck(insn.a1.empty && insn.a2.empty);
+    passAct(1, 0xc9, insn);
 }
 
 /**
