@@ -13,7 +13,7 @@ void main(string[] args)
 
     string[] s = splitLines(cast(string)read(args[1]));
 
-    auto split = args[1].findSplit(".");
+    auto split = args[1].findSplit(".asm");
     auto outfile = split[0] ~ ".com";
 
     assemble(s, outfile);
