@@ -18,21 +18,9 @@ start:
 	mov	a, c
 	mov	c, b
 	jmp	again	; jump to again
+	jmp	msg
 	lxi	sp, 0efdch
 	shld	7fffh
 	mvi	c, 80h
 	ldax	d
-msg:	db	H	; "Hello world$"
-	db	e
-	db	l
-	db	l
-	db	o
-	db	20h
-	db	w
-	db	o
-	db	r
-	db	l
-	db	d
-	db	$
-	db	0
-	db	0h
+msg:	db	'Hello, world$'	; a string!

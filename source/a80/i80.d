@@ -1256,8 +1256,10 @@ static void imm(i80 insn, int immtype)
                 break;
             }
         }
-        if (!found)
-            err("label " ~ check ~ " not defined");
+        if (pass == 2) {
+            if (!found)
+                err("label " ~ check ~ " not defined");
+        }
     }
 
     if (pass == 2) {
@@ -1287,8 +1289,10 @@ static void a16(i80 insn)
                 break;
             }
         }
-        if (!found)
-            stderr.writefln("label " ~ insn.a1 ~ " not defined");
+        if (pass == 2) {
+            if (!found)
+                err("label " ~ insn.a1 ~ " not defined");
+        }
     }
 
     if (pass == 2) {
