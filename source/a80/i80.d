@@ -1322,7 +1322,7 @@ static void a16(i80 insn)
  */
 static void err(string msg)
 {
-    writeln("a80: " ~ to!string(line + 1) ~ ": " ~ msg);
+    stderr.writeln("a80: " ~ to!string(line + 1) ~ ": " ~ msg);
     enforce(0);
 }
 
