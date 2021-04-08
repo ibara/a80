@@ -62,15 +62,14 @@ too dissimilar from other CP/M assemblers.
 
 Strings
 -------
-The `DB` pseudo-op is available, but single characters and/or bytes
-only right now. Sorry. You can put in characters without quotes
-though. See `fib.asm` for an example.
+The `DB` pseudo-op is available. Strings can be written within
+single quotes. Single characters will be interpreted to ASCII.
 
 Note this important distinction:
 `db	0` will output `'0'` or `0x30` in ASCII.
 `db	0h` will output `0x00`.
 
-If you want a comma you need to use `db	2c`.
+If you want a comma you need to use `db	2c` or put it in a string.
 
 License
 -------

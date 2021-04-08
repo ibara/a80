@@ -64,6 +64,7 @@ class i80
      * Parse each line into (up to) five tokens.
      */
     void parse(string line) {
+        auto dbFix = 0;
         auto preprocess = stripLeft(line);
 
         auto splitcomm = preprocess.findSplit(";");
@@ -84,6 +85,17 @@ class i80
             }
         }
 
+        /**
+         * Fixup for the db 'string$' case.
+         */
+        if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
+            (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
+            splita1 = splitcomm[0].findSplit("'");
+            a1 = strip(chompPrefix(chop(strip(splita1[2])), "'"));
+            a2 = null;
+            dbFix = 1;
+        }
+
         auto splitop = splita1[0].findSplit(":");
         if (!splitop[1].empty) {
             op = strip(splitop[2]);
@@ -95,15 +107,17 @@ class i80
         /**
          * Fixup for the label: op case.
          */
-        auto opFix = a1.findSplit("\t");
-        if (!opFix[1].empty) {
-            op = strip(opFix[0]);
-            a1 = strip(opFix[2]);
-        } else {
-            opFix = a1.findSplit(" ");
+        if (dbFix == 0) {
+            auto opFix = a1.findSplit("\t");
             if (!opFix[1].empty) {
                 op = strip(opFix[0]);
                 a1 = strip(opFix[2]);
+            } else {
+                opFix = a1.findSplit(" ");
+                if (!opFix[1].empty) {
+                    op = strip(opFix[0]);
+                    a1 = strip(opFix[2]);
+                }
             }
         }
     }
@@ -1123,7 +1137,6 @@ static void equ(i80 insn)
 
 /**
  * Place a byte.
- * Sorry, no strings (yet).
  */
 static void db(i80 insn)
 {
@@ -1133,7 +1146,14 @@ static void db(i80 insn)
             err("number must end with 'h'");
         passAct(1, to!ubyte(chop(insn.a1), 16), insn);
     } else {
-        passAct(1, to!ubyte(insn.a1[0]), insn);
+        if (pass == 1) {
+            if (!insn.lab.empty)
+                addsym(insn.lab, addr);
+            addr += insn.a1.length;
+        } else {
+            for (size_t i = 0; i < insn.a1.length; i++)
+                output ~= cast(ubyte)insn.a1[i];
+        }
     }
 }
 
