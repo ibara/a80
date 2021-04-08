@@ -26,9 +26,8 @@ static ubyte[] output;
 
 /**
  * Address for labels.
- * We start at 0x100 because that is the CP/M entry point.
  */
-static ushort addr = 0x100;
+static ushort addr;
 
 /**
  * Symbol table.
@@ -328,6 +327,8 @@ static void process(i80 insn)
         equ(insn);
     else if (op == "db")
         db(insn);
+    else if (op == "org")
+        org(insn);
     else
         err("unknown opcode: " ~ op);
 }
@@ -1133,6 +1134,22 @@ static void db(i80 insn)
         passAct(1, to!ubyte(chop(insn.a1), 16), insn);
     } else {
         passAct(1, to!ubyte(insn.a1[0]), insn);
+    }
+}
+
+/**
+ * Force updated the address counter.
+ */
+static void org(i80 insn)
+{
+    argcheck(insn.lab.empty && !insn.a1.empty && insn.a2.empty);
+    if (isDigit(insn.a1[0])) {
+        if (insn.a1[insn.a1.length - 1] != 'h')
+            err("number must end with 'h'");
+        if (pass == 1)
+            addr = to!ushort(chop(insn.a1), 16);
+    } else {
+        err("org must take a number");
     }
 }
 
