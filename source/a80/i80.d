@@ -1128,7 +1128,7 @@ static void equ(i80 insn)
 static void db(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
-    if (isDigit(insn.a1[0])) {
+    if (isDigit(insn.a1[0]) && insn.a1.length > 1) {
         if (insn.a1[insn.a1.length - 1] != 'h')
             err("number must end with 'h'");
         passAct(1, to!ubyte(chop(insn.a1), 16), insn);
