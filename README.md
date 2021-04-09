@@ -43,13 +43,8 @@ An example of an assembly program can be found in `fib.asm`.
 
 `a80` only understands Intel 8080 opcodes.
 
-The CP/M `EQU` directive is supported but in a slightly altered
-syntax. It must be in the form:
-```
-label:	equ	<value>
-```
-Where **value** must be a number. You cannot use other labels as a
-value nor can you use expressions.
+The CP/M `EQU` directive is supported however you cannot use other
+labels as a value nor can you use expressions.
 
 All **op** and **arg** must be lowercase, though labels may include
 capital letters.

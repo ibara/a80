@@ -105,6 +105,21 @@ class i80
         }
 
         /**
+         * Fixup for equ statements.
+         */
+        if (dbFix == 0) {
+            auto equFix = a1.findSplit("equ");
+            if (equFix[1] == "equ") {
+                if (!lab.empty || !a2.empty)
+                    err("Invalid equ statement");
+
+                lab = strip(op);
+                    op = strip(equFix[1]);
+            a1 = strip(equFix[2]);
+            }
+        }
+
+        /**
          * Fixup for the label: op case.
          */
         if (dbFix == 0) {
