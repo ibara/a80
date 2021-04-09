@@ -348,8 +348,12 @@ static void process(i80 insn)
         equ(insn);
     else if (op == "db")
         db(insn);
+    else if (op == "dw")
+        dw(insn);
     else if (op == "org")
         org(insn);
+    else if (op == "end")
+        end(insn);
     else
         err("unknown opcode: " ~ op);
 }
@@ -1174,6 +1178,15 @@ static void db(i80 insn)
 }
 
 /**
+ * Place a word.
+ */
+static void dw(i80 insn)
+{
+    argcheck(!insn.a1.empty && insn.a2.empty);
+    a16(insn);
+}
+
+/**
  * Force updated the address counter.
  */
 static void org(i80 insn)
@@ -1187,6 +1200,15 @@ static void org(i80 insn)
     } else {
         err("org must take a number");
     }
+}
+
+/**
+ * End of assembly, even if there is more after.
+ */
+static void end(i80 insn)
+{
+    argcheck(insn.lab.empty && insn.a1.empty && insn.a2.empty);
+    line = line.max - 1;
 }
 
 /**
