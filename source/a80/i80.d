@@ -1165,10 +1165,15 @@ static void cpi()
  */
 static void equ()
 {
+    ushort a;
+
     if (lab.empty)
         err("must have a label in equ statement");
 
-    auto a = numcheck();
+    if (a1[0] == '$')
+        a = dollar();
+    else
+        a = numcheck(a1);
 
     if (pass == 1)
        addsym(lab, a);
@@ -1181,7 +1186,7 @@ static void db()
 {
     argcheck(!a1.empty && a2.empty);
     if (isDigit(a1[0])) {
-        auto a = numcheck();
+        auto a = numcheck(a1);
         passAct(1, a);
     } else {
         if (pass == 1) {
@@ -1222,12 +1227,12 @@ static void ds()
         if (!lab.empty)
             addsym(lab, addr);
     } else {
-        auto a = numcheck();
+        auto a = numcheck(a1);
         for (size_t i = 0; i < a; i++)
             output ~= cast(ubyte)0;
     }
 
-    addr += numcheck();
+    addr += numcheck(a1);
 }
 
 /**
@@ -1238,7 +1243,7 @@ static void org()
     argcheck(lab.empty && !a1.empty && a2.empty);
     if (isDigit(a1[0])) {
         if (pass == 1)
-            addr = numcheck();
+            addr = numcheck(a1);
     } else {
         err("org must take a number");
     }
@@ -1345,10 +1350,7 @@ static void imm(int type)
         check = a1;
 
     if (isDigit(check[0])) {
-        if (check[check.length - 1] == 'h')
-            dig = to!ushort(chop(check), 16);
-        else
-            dig = to!ushort(check, 10);
+        dig = numcheck(check);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
             if (check == stab[i].name) {
@@ -1379,7 +1381,7 @@ static void a16()
     bool found = false;
 
     if (isDigit(a1[0])) {
-        dig = numcheck();
+        dig = numcheck(a1);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
             if (a1 == stab[i].name) {
@@ -1421,14 +1423,41 @@ static void argcheck(bool passed)
 /**
  * Check if a number is decimal or hex.
  */
-static ushort numcheck()
+static ushort numcheck(string input)
 {
     ushort num;
 
-    if (a1[a1.length - 1] == 'h')
-        num = to!ushort(chop(a1), 16);
+    if (input[input.length - 1] == 'h')
+        num = to!ushort(chop(input), 16);
     else
-        num = to!ushort(a1, 10);
+        num = to!ushort(input, 10);
+
+    return num;
+}
+
+/**
+ * If the argument to EQU begins with $, we need to parse that.
+ * Our syntax differs a little from the CP/M assembler.
+ * And it only deals with simple expressions.
+ */
+static ushort dollar()
+{
+    ushort num = addr;
+
+    if (a1.length > 1) {
+        if (a1[1] == '+')
+            num += numcheck(a1[2..$]);
+        else if (a1[1] == '-')
+            num -= numcheck(a1[2..$]);
+        else if (a1[1] == '*')
+            num *= numcheck(a1[2..$]);
+        else if (a1[1] == '/')
+            num /= numcheck(a1[2..$]);
+        else if (a1[1] == '%')
+            num %= numcheck(a1[2..$]);
+        else
+            err("invalid operator in equ");
+    }
 
     return num;
 }
