@@ -66,6 +66,12 @@ Note this important distinction:
 
 If you want a comma you need to use `db	2c` or put it in a string.
 
+Both the semicolon and the single quote are illegal in strings and
+cannot be written as a single character. However, they can still be
+input by using their hex code: `db	3b` will input a semicolon
+and `db	27` will input a single quote. This is a limitation of the
+parser and is welcome to be fixed.
+
 License
 -------
 ISC license. See `LICENSE` for more information.
