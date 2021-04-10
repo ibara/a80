@@ -2,7 +2,7 @@
 ; Results in b
 	org	100h	; We are CP/M
 
-label:	equ	108h	; Just to show it works
+label	equ	108h	; Just to show it works
 
 start:
 	nop
