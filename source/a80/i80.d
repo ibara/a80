@@ -559,7 +559,6 @@ static void daa(i80 insn)
 {
     argcheck(insn.a1.empty && insn.a2.empty);
     passAct(1, 0x27, insn);
-    imm(insn, IMM16);
 }
 
 /**
@@ -1178,7 +1177,7 @@ static void equ(i80 insn)
 static void db(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
-    if (isDigit(insn.a1[0]) && insn.a1.length > 1) {
+    if (isDigit(insn.a1[0])) {
         if (insn.a1[insn.a1.length - 1] != 'h')
             err("number must end with 'h'");
         passAct(1, to!ubyte(chop(insn.a1), 16), insn);
@@ -1200,6 +1199,10 @@ static void db(i80 insn)
 static void dw(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
+    if (pass == 1) {
+        if (!insn.lab.empty)
+            addsym(insn.lab, addr);
+    }
     a16(insn);
 }
 
@@ -1212,6 +1215,11 @@ static void ds(i80 insn)
     if (isDigit(insn.a1[0])) {
         if (insn.a1[insn.a1.length - 1] != 'h')
             err("number must end with 'h'");
+    }
+
+    if (pass == 1) {
+        if (!insn.lab.empty)
+            addsym(insn.lab, addr);
     }
 
     addr += to!ushort(chop(insn.a1), 16);

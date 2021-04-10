@@ -58,11 +58,8 @@ too dissimilar from other CP/M assemblers.
 Strings
 -------
 The `DB` pseudo-op is available. Strings can be written within
-single quotes. Single characters will be interpreted to ASCII.
-
-Note this important distinction:
-`db	0` will output `'0'` or `0x30` in ASCII.
-`db	0h` will output `0x00`.
+single quotes. Non-numeric, non-comma, non-semicolon, and
+non-single quote single characters will be interpreted to ASCII.
 
 If you want a comma you need to use `db	2c` or put it in a string.
 
