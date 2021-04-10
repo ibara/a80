@@ -51,9 +51,11 @@ capital letters.
 
 Numbers
 -------
-All numbers must be in hex and must end with an `h`. If a hex
-number begins with `a-f`, it must be prefixed with `0`. This is not
-too dissimilar from other CP/M assemblers.
+Numbers may be in decimal or hex.
+
+Hex numbers must end with an `h`. If a hex number begins with
+`a-f`, it must be prefixed with `0`. This is not too dissimilar
+compared to other CP/M assemblers.
 
 Strings
 -------

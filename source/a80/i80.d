@@ -1164,9 +1164,8 @@ static void equ()
     if (lab.empty)
         err("must have a label in equ statement");
 
-    if (a1[a1.length - 1] != 'h')
-        err("number must end with 'h'");
-    auto a = to!ushort(chop(a1), 16);
+    auto a = numcheck();
+
     if (pass == 1)
        addsym(lab, a);
 }
@@ -1178,9 +1177,8 @@ static void db()
 {
     argcheck(!a1.empty && a2.empty);
     if (isDigit(a1[0])) {
-        if (a1[a1.length - 1] != 'h')
-            err("number must end with 'h'");
-        passAct(1, to!ubyte(chop(a1), 16));
+        auto a = numcheck();
+        passAct(1, a);
     } else {
         if (pass == 1) {
             if (!lab.empty)
@@ -1215,21 +1213,17 @@ static void dw()
 static void ds()
 {
     argcheck(!a1.empty && a2.empty);
-    if (isDigit(a1[0])) {
-        if (a1[a1.length - 1] != 'h')
-            err("number must end with 'h'");
-    }
 
     if (pass == 1) {
         if (!lab.empty)
             addsym(lab, addr);
     } else {
-        auto a = to!short(chop(a1), 16);
+        auto a = numcheck();
         for (size_t i = 0; i < a; i++)
             output ~= cast(ubyte)0;
     }
 
-    addr += to!ushort(chop(a1), 16);
+    addr += numcheck();
 }
 
 /**
@@ -1239,10 +1233,8 @@ static void org()
 {
     argcheck(lab.empty && !a1.empty && a2.empty);
     if (isDigit(a1[0])) {
-        if (a1[a1.length - 1] != 'h')
-            err("number must end with 'h'");
         if (pass == 1)
-            addr = to!ushort(chop(a1), 16);
+            addr = numcheck();
     } else {
         err("org must take a number");
     }
@@ -1329,9 +1321,10 @@ static void imm(int type)
         check = a1;
 
     if (isDigit(check[0])) {
-        if (check[check.length - 1] != 'h')
-            err("number must end with 'h'");
-        dig = to!ushort(chop(check), 16);
+        if (check[check.length - 1] == 'h')
+            dig = to!ushort(chop(check), 16);
+        else
+            dig = to!ushort(check, 10);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
             if (check == stab[i].name) {
@@ -1362,9 +1355,7 @@ static void a16()
     bool found = false;
 
     if (isDigit(a1[0])) {
-        if (a1[a1.length - 1] != 'h')
-            err("number must end with 'h'");
-        dig = to!ushort(chop(a1), 16);
+        dig = numcheck();
     } else {
         for (size_t i = 0; i < stab.length; i++) {
             if (a1 == stab[i].name) {
@@ -1401,4 +1392,19 @@ static void argcheck(bool passed)
 {
     if (passed == false)
         err("arguments not correct for opcode");
+}
+
+/**
+ * Check if a number is decimal or hex.
+ */
+static ushort numcheck()
+{
+    ushort num;
+
+    if (a1[a1.length - 1] == 'h')
+        num = to!ushort(chop(a1), 16);
+    else
+        num = to!ushort(a1, 10);
+
+    return num;
 }
