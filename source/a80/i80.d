@@ -90,8 +90,9 @@ class i80
          */
         if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
             (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
-            splita1 = splitcomm[0].findSplit("'");
-            a1 = strip(chompPrefix(chop(strip(splita1[2])), "'"));
+            auto newsplit = strip(splitcomm[0]);
+            splita1 = newsplit.findSplit("'");
+            a1 = chop(splita1[2]);
             a2 = null;
             dbFix = 1;
         }
@@ -452,7 +453,7 @@ static void inx(i80 insn)
 static void inr(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x04 + regMod8(insn.a1), insn);
+    passAct(1, 0x04 + (regMod8(insn.a1) << 3), insn);
 }
 
 /**
@@ -1189,6 +1190,7 @@ static void db(i80 insn)
         } else {
             for (size_t i = 0; i < insn.a1.length; i++)
                 output ~= cast(ubyte)insn.a1[i];
+            addr += insn.a1.length;
         }
     }
 }
@@ -1204,6 +1206,8 @@ static void dw(i80 insn)
             addsym(insn.lab, addr);
     }
     a16(insn);
+
+    addr += 2;
 }
 
 /**
@@ -1220,6 +1224,10 @@ static void ds(i80 insn)
     if (pass == 1) {
         if (!insn.lab.empty)
             addsym(insn.lab, addr);
+    } else {
+        auto a = to!short(chop(insn.a1), 16);
+        for (size_t i = 0; i < a; i++)
+            output ~= cast(ubyte)0;
     }
 
     addr += to!ushort(chop(insn.a1), 16);
