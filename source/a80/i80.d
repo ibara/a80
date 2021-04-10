@@ -365,6 +365,8 @@ static void process(i80 insn)
         db(insn);
     else if (op == "dw")
         dw(insn);
+    else if (op == "ds")
+        ds(insn);
     else if (op == "org")
         org(insn);
     else if (op == "end")
@@ -1199,6 +1201,20 @@ static void dw(i80 insn)
 {
     argcheck(!insn.a1.empty && insn.a2.empty);
     a16(insn);
+}
+
+/**
+ * Reserve an area of uninitialized memory.
+ */
+static void ds(i80 insn)
+{
+    argcheck(!insn.a1.empty && insn.a2.empty);
+    if (isDigit(insn.a1[0])) {
+        if (insn.a1[insn.a1.length - 1] != 'h')
+            err("number must end with 'h'");
+    }
+
+    addr += to!ushort(chop(insn.a1), 16);
 }
 
 /**
