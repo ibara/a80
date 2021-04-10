@@ -369,6 +369,10 @@ static void process()
         ds();
     else if (op == "org")
         org();
+    else if (op == "name")
+        name();
+    else if (op == "title")
+        title();
     else if (op == "end")
         end();
     else
@@ -1238,6 +1242,26 @@ static void org()
     } else {
         err("org must take a number");
     }
+}
+
+/**
+ * Set module name.
+ * Not useful for us, since we don't generate a listing file.
+ * Check and ignore.
+ */
+static void name()
+{
+    argcheck(lab.empty && !a1.empty && a2.empty);
+}
+
+/**
+ * Set module title.
+ * Not useful for us, since we don't generate a listing file.
+ * Check and ignore.
+ */
+static void title()
+{
+    argcheck(lab.empty && !a1.empty && a2.empty);
 }
 
 /**
