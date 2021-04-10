@@ -1,8 +1,7 @@
 a80
 ===
 `a80` is an assembler written in [D](https://dlang.org/) for the
-Intel 8080 (and, by extension, the Zilog Z80) CPU. It produces
-binaries for CP/M using the standard entry point of `0x100`.
+Intel 8080 (and, by extension, the Zilog Z80) CPU.
 
 `a80` is developed on [OpenBSD](https://www.openbsd.org/) but
 should work on any system that D targets.
