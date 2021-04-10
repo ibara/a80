@@ -187,8 +187,6 @@ static void fileWrite(string name) {
  */
 static void process()
 {
-    auto op = op;
-
     /**
      * Special case for if you put a label by itself on a line.
      * Or have a totally blank line.
