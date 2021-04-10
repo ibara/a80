@@ -52,92 +52,95 @@ enum IMM16 = 16;
 /**
  * Intel 8080 assembler instruction.
  */
-class i80
-{
-    string lab;         /// Label
-    string op;          /// Instruction mnemonic
-    string a1;          /// First argument
-    string a2;          /// Second argument
-    string comm;        /// Comment
+static string lab;         /// Label
+static string op;          /// Instruction mnemonic
+static string a1;          /// First argument
+static string a2;          /// Second argument
+static string comm;        /// Comment
 
-    /**
-     * Parse each line into (up to) five tokens.
-     */
-    void parse(string line) {
-        auto dbFix = 0;
-        auto preprocess = stripLeft(line);
+/**
+ * Parse each line into (up to) five tokens.
+ */
+void parse(string line) {
+    lab = null;
+    op = null;
+    a1 = null;
+    a2 = null;
+    comm = null;
 
-        auto splitcomm = preprocess.findSplit(";");
-        if (!splitcomm[2].empty)
-            comm = strip(splitcomm[2]);
+    auto dbFix = 0;
+    auto preprocess = stripLeft(line);
 
-        auto splita2 = splitcomm[0].findSplit(",");
-        if (!splita2[2].empty)
-            a2 = strip(splita2[2]);
+    auto splitcomm = preprocess.findSplit(";");
+    if (!splitcomm[2].empty)
+        comm = strip(splitcomm[2]);
 
-        auto splita1 = splita2[0].findSplit("\t");
+    auto splita2 = splitcomm[0].findSplit(",");
+    if (!splita2[2].empty)
+        a2 = strip(splita2[2]);
+
+    auto splita1 = splita2[0].findSplit("\t");
+    if (!splita1[2].empty) {
+        a1 = strip(splita1[2]);
+    } else {
+        splita1 = splita2[0].findSplit(" ");
         if (!splita1[2].empty) {
             a1 = strip(splita1[2]);
+        }
+    }
+
+    /**
+     * Fixup for the db 'string$' case.
+     */
+    if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
+        (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
+        auto newsplit = strip(splitcomm[0]);
+        splita1 = newsplit.findSplit("'");
+        a1 = chop(splita1[2]);
+        a2 = null;
+        dbFix = 1;
+    }
+
+    auto splitop = splita1[0].findSplit(":");
+    if (!splitop[1].empty) {
+        op = strip(splitop[2]);
+        lab = strip(splitop[0]);
+    } else {
+        op = strip(splitop[0]);
+    }
+
+    /**
+     * Fixup for equ statements.
+     */
+    if (dbFix == 0) {
+        auto equFix = a1.findSplit("equ");
+        if (equFix[1] == "equ") {
+            if (!lab.empty || !a2.empty)
+                err("Invalid equ statement");
+
+            lab = strip(op);
+                op = strip(equFix[1]);
+        a1 = strip(equFix[2]);
+        }
+    }
+
+    /**
+     * Fixup for the label: op case.
+     */
+    if (dbFix == 0) {
+        auto opFix = a1.findSplit("\t");
+        if (!opFix[1].empty) {
+            op = strip(opFix[0]);
+            a1 = strip(opFix[2]);
         } else {
-            splita1 = splita2[0].findSplit(" ");
-            if (!splita1[2].empty) {
-                a1 = strip(splita1[2]);
-            }
-        }
-
-        /**
-         * Fixup for the db 'string$' case.
-         */
-        if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
-            (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
-            auto newsplit = strip(splitcomm[0]);
-            splita1 = newsplit.findSplit("'");
-            a1 = chop(splita1[2]);
-            a2 = null;
-            dbFix = 1;
-        }
-
-        auto splitop = splita1[0].findSplit(":");
-        if (!splitop[1].empty) {
-            op = strip(splitop[2]);
-            lab = strip(splitop[0]);
-        } else {
-            op = strip(splitop[0]);
-        }
-
-        /**
-         * Fixup for equ statements.
-         */
-        if (dbFix == 0) {
-            auto equFix = a1.findSplit("equ");
-            if (equFix[1] == "equ") {
-                if (!lab.empty || !a2.empty)
-                    err("Invalid equ statement");
-
-                lab = strip(op);
-                    op = strip(equFix[1]);
-            a1 = strip(equFix[2]);
-            }
-        }
-
-        /**
-         * Fixup for the label: op case.
-         */
-        if (dbFix == 0) {
-            auto opFix = a1.findSplit("\t");
+            opFix = a1.findSplit(" ");
             if (!opFix[1].empty) {
                 op = strip(opFix[0]);
                 a1 = strip(opFix[2]);
             } else {
-                opFix = a1.findSplit(" ");
-                if (!opFix[1].empty) {
-                    op = strip(opFix[0]);
-                    a1 = strip(opFix[2]);
-                } else {
-                    if (op.empty && !a1.empty && a2.empty) {
-                        op = a1;
-                        a1 = null;
-                    }
+                if (op.empty && !a1.empty && a2.empty) {
+                    op = a1;
+                    a1 = null;
                 }
             }
         }
@@ -156,19 +159,15 @@ void assemble(string[] s, string name)
     /* Pass 1 */
     pass = 1;
     for (line = 0; line < s.length; line++) {
-        i80 insn = new i80;
-
-        insn.parse(s[line]);
-        process(insn);
+        parse(s[line]);
+        process();
     }
 
     /* Pass 2 */
     pass = 2;
     for (line = 0; line < s.length; line++) {
-        i80 insn = new i80;
-
-        insn.parse(s[line]);
-        process(insn);
+        parse(s[line]);
+        process();
     }
 
     fileWrite(name);
@@ -186,16 +185,16 @@ static void fileWrite(string name) {
 /**
  * Figure out which op we have.
  */
-static void process(i80 insn)
+static void process()
 {
-    auto op = insn.op;
+    auto op = op;
 
     /**
      * Special case for if you put a label by itself on a line.
      * Or have a totally blank line.
      */
-    if (insn.op.empty && insn.a1.empty && insn.a2.empty) {
-        passAct(0, -1, insn);
+    if (op.empty && a1.empty && a2.empty) {
+        passAct(0, -1);
         return;
     }
 
@@ -205,173 +204,173 @@ static void process(i80 insn)
      * Perhaps try a hash table?
      */
     if (op == "nop")
-        nop(insn);
+        nop();
     else if (op == "lxi")
-        lxi(insn);
+        lxi();
     else if (op == "stax")
-        stax(insn);
+        stax();
     else if (op == "inx")
-        inx(insn);
+        inx();
     else if (op == "inr")
-        inr(insn);
+        inr();
     else if (op == "dcr")
-        dcr(insn);
+        dcr();
     else if (op == "mvi")
-        mvi(insn);
+        mvi();
     else if (op == "rlc")
-        rlc(insn);
+        rlc();
     else if (op == "dad")
-        dad(insn);
+        dad();
     else if (op == "ldax")
-        ldax(insn);
+        ldax();
     else if (op == "dcx")
-        dcx(insn);
+        dcx();
     else if (op == "rrc")
-        rrc(insn);
+        rrc();
     else if (op == "ral")
-        ral(insn);
+        ral();
     else if (op == "rar")
-        rar(insn);
+        rar();
     else if (op == "shld")
-        shld(insn);
+        shld();
     else if (op == "daa")
-        daa(insn);
+        daa();
     else if (op == "lhld")
-        lhld(insn);
+        lhld();
     else if (op == "cma")
-        cma(insn);
+        cma();
     else if (op == "sta")
-        sta(insn);
+        sta();
     else if (op == "stc")
-        stc(insn);
+        stc();
     else if (op == "lda")
-        lda(insn);
+        lda();
     else if (op == "cmc")
-        cmc(insn);
+        cmc();
     else if (op == "mov")
-        mov(insn);
+        mov();
     else if (op == "hlt")
-        hlt(insn);
+        hlt();
     else if (op == "add")
-        add(insn);
+        add();
     else if (op == "adc")
-        adc(insn);
+        adc();
     else if (op == "sub")
-        sub(insn);
+        sub();
     else if (op == "sbb")
-        sbb(insn);
+        sbb();
     else if (op == "ana")
-        ana(insn);
+        ana();
     else if (op == "xra")
-        xra(insn);
+        xra();
     else if (op == "ora")
-        ora(insn);
+        ora();
     else if (op == "cmp")
-        cmp(insn);
+        cmp();
     else if (op == "rnz")
-        rnz(insn);
+        rnz();
     else if (op == "pop")
-        pop(insn);
+        pop();
     else if (op == "jnz")
-        jnz(insn);
+        jnz();
     else if (op == "jmp")
-        jmp(insn);
+        jmp();
     else if (op == "cnz")
-        cnz(insn);
+        cnz();
     else if (op == "push")
-        push(insn);
+        push();
     else if (op == "adi")
-        adi(insn);
+        adi();
     else if (op == "rst")
-        rst(insn);
+        rst();
     else if (op == "rz")
-        rz(insn);
+        rz();
     else if (op == "ret")
-        ret(insn);
+        ret();
     else if (op == "jz")
-        jz(insn);
+        jz();
     else if (op == "cz")
-        cz(insn);
+        cz();
     else if (op == "call")
-        call(insn);
+        call();
     else if (op == "aci")
-        aci(insn);
+        aci();
     else if (op == "rnc")
-        rnc(insn);
+        rnc();
     else if (op == "jnc")
-        jnc(insn);
+        jnc();
     else if (op == "out")
-        i80_out(insn);
+        i80_out();
     else if (op == "cnc")
-        cnc(insn);
+        cnc();
     else if (op == "sui")
-        sui(insn);
+        sui();
     else if (op == "rc")
-        rc(insn);
+        rc();
     else if (op == "jc")
-        jc(insn);
+        jc();
     else if (op == "in")
-        i80_in(insn);
+        i80_in();
     else if (op == "cc")
-        cc(insn);
+        cc();
     else if (op == "sbi")
-        sbi(insn);
+        sbi();
     else if (op == "rpo")
-        rpo(insn);
+        rpo();
     else if (op == "jpo")
-        jpo(insn);
+        jpo();
     else if (op == "xthl")
-        xthl(insn);
+        xthl();
     else if (op == "cpo")
-        cpo(insn);
+        cpo();
     else if (op == "ani")
-        ani(insn);
+        ani();
     else if (op == "rpe")
-        rpe(insn);
+        rpe();
     else if (op == "pchl")
-        pchl(insn);
+        pchl();
     else if (op == "jpe")
-        jpe(insn);
+        jpe();
     else if (op == "xchg")
-        xchg(insn);
+        xchg();
     else if (op == "cpe")
-        cpe(insn);
+        cpe();
     else if (op == "xri")
-        xri(insn);
+        xri();
     else if (op == "rp")
-        rp(insn);
+        rp();
     else if (op == "jp")
-        jp(insn);
+        jp();
     else if (op == "di")
-        di(insn);
+        di();
     else if (op == "cp")
-        cp(insn);
+        cp();
     else if (op == "ori")
-        ori(insn);
+        ori();
     else if (op == "rm")
-        rm(insn);
+        rm();
     else if (op == "sphl")
-        sphl(insn);
+        sphl();
     else if (op == "jm")
-        jm(insn);
+        jm();
     else if (op == "ei")
-        ei(insn);
+        ei();
     else if (op == "cm")
-        cm(insn);
+        cm();
     else if (op == "cpi")
-        cpi(insn);
+        cpi();
     else if (op == "equ")
-        equ(insn);
+        equ();
     else if (op == "db")
-        db(insn);
+        db();
     else if (op == "dw")
-        dw(insn);
+        dw();
     else if (op == "ds")
-        ds(insn);
+        ds();
     else if (op == "org")
-        org(insn);
+        org();
     else if (op == "end")
-        end(insn);
+        end();
     else
         err("unknown opcode: " ~ op);
 }
@@ -379,11 +378,11 @@ static void process(i80 insn)
 /**
  * Take action depending on which pass this is.
  */
-static void passAct(ushort a, int b, i80 insn)
+static void passAct(ushort a, int b)
 {
     if (pass == 1) {
-        if (!insn.lab.empty)
-            addsym(insn.lab, addr);
+        if (!lab.empty)
+            addsym(lab, addr);
         addr += a;
     } else {
         if (b != -1)
@@ -408,32 +407,32 @@ static void addsym(string lab, ushort a)
 /**
  * nop (0x00)
  */
-static void nop(i80 insn)
+static void nop()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x00, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x00);
 }
 
 /**
  * lxi (0x01 + 16 bit register offset)
  */
-static void lxi(i80 insn)
+static void lxi()
 {
-    argcheck(!insn.a1.empty && !insn.a2.empty);
-    passAct(3, 0x01 + regMod16(insn), insn);
-    imm(insn, IMM16);
+    argcheck(!a1.empty && !a2.empty);
+    passAct(3, 0x01 + regMod16());
+    imm(IMM16);
 }
 
 /**
  * stax (0x02 + 16 bit register offset)
  */
-static void stax(i80 insn)
+static void stax()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    if (insn.a1 == "b")
-        passAct(1, 0x02, insn);
-    else if (insn.a1 == "d")
-        passAct(1, 0x12, insn);
+    argcheck(!a1.empty && a2.empty);
+    if (a1 == "b")
+        passAct(1, 0x02);
+    else if (a1 == "d")
+        passAct(1, 0x12);
     else
         err("stax only takes b or d");
 }
@@ -441,68 +440,68 @@ static void stax(i80 insn)
 /**
  * inx (0x03 + 16 bit register offset)
  */
-static void inx(i80 insn)
+static void inx()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x03 + regMod16(insn), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x03 + regMod16());
 }
 
 /**
  * inr (0x04 + (8 bit register offset << 3))
  */
-static void inr(i80 insn)
+static void inr()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x04 + (regMod8(insn.a1) << 3), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x04 + (regMod8(a1) << 3));
 }
 
 /**
  * dcr (0x05 + (8 bit register offset << 3))
  */
-static void dcr(i80 insn)
+static void dcr()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x05 + (regMod8(insn.a1) << 3), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x05 + (regMod8(a1) << 3));
 }
 
 /**
  * mvi (0x06 + (8 bit register offset << 3))
  */
-static void mvi(i80 insn)
+static void mvi()
 {
-    argcheck(!insn.a1.empty && !insn.a2.empty);
-    passAct(2, 0x06 + (regMod8(insn.a1) << 3), insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && !a2.empty);
+    passAct(2, 0x06 + (regMod8(a1) << 3));
+    imm(IMM8);
 }
 
 /**
  * rcl (0x07)
  */
-static void rlc(i80 insn)
+static void rlc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x07, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x07);
 }
 
 /**
  * dad (0x09 + 16 bit register offset)
  */
-static void dad(i80 insn)
+static void dad()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x09 + regMod16(insn), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x09 + regMod16());
 }
 
 /**
  * ldax (0x0a + 16 bit register offset)
  */
-static void ldax(i80 insn)
+static void ldax()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    if (insn.a1 == "b")
-        passAct(1, 0x0a, insn);
-    else if (insn.a1 == "d")
-        passAct(1, 0x1a, insn);
+    argcheck(!a1.empty && a2.empty);
+    if (a1 == "b")
+        passAct(1, 0x0a);
+    else if (a1 == "d")
+        passAct(1, 0x1a);
     else
         err("ldax only takes b or d");
 }
@@ -510,113 +509,113 @@ static void ldax(i80 insn)
 /**
  * dcx (0x0b + 16 bit register offset)
  */
-static void dcx(i80 insn)
+static void dcx()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x0b + regMod16(insn), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x0b + regMod16());
 }
 
 /**
  * rrc (0x0f)
  */
-static void rrc(i80 insn)
+static void rrc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x0f, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x0f);
 }
 
 /**
  * ral (0x17)
  */
-static void ral(i80 insn)
+static void ral()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x17, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x17);
 }
 
 /**
  * rar (0x1f)
  */
-static void rar(i80 insn)
+static void rar()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x1f, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x1f);
 }
 
 /**
  * shld (0x22)
  */
-static void shld(i80 insn)
+static void shld()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0x22, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0x22);
+    a16();
 }
 
 /**
  * daa (0x27)
  */
-static void daa(i80 insn)
+static void daa()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x27, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x27);
 }
 
 /**
  * lhld (0x2a)
  */
-static void lhld(i80 insn)
+static void lhld()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0x2a, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0x2a);
+    a16();
 }
 
 /**
  * cma (0x2f)
  */
-static void cma(i80 insn)
+static void cma()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x2f, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x2f);
 }
 
 /**
  * sta (0x32)
  */
-static void sta(i80 insn)
+static void sta()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0x32, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0x32);
+    a16();
 }
 
 /**
  * stc (0x37)
  */
-static void stc(i80 insn)
+static void stc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x37, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x37);
 }
 
 /**
  * lda (0x3a)
  */
-static void lda(i80 insn)
+static void lda()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0x3a, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0x3a);
+    a16();
 }
 
 /**
  * cmc (0x3f)
  */
-static void cmc(i80 insn)
+static void cmc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x3f, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x3f);
 }
 
 /**
@@ -624,169 +623,169 @@ static void cmc(i80 insn)
  * We allow mov m, m (0x76)
  * But that will result in HLT.
  */
-static void mov(i80 insn)
+static void mov()
 {
-    argcheck(!insn.a1.empty && !insn.a2.empty);
-    passAct(1, 0x40 + (regMod8(insn.a1) << 3) + regMod8(insn.a2), insn);
+    argcheck(!a1.empty && !a2.empty);
+    passAct(1, 0x40 + (regMod8(a1) << 3) + regMod8(a2));
 }
 
 /**
  * hlt (0x76)
  */
-static void hlt(i80 insn)
+static void hlt()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x76, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0x76);
 }
 
 /**
  * add (0x80 + 8-bit register offset)
  */
-static void add(i80 insn)
+static void add()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x80 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x80 + regMod8(a1));
 }
 
 /**
  * adc (0x88 + 8-bit register offset)
  */
-static void adc(i80 insn)
+static void adc()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x88 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x88 + regMod8(a1));
 }
 
 /**
  * sub (0x90 + 8-bit register offset)
  */
-static void sub(i80 insn)
+static void sub()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x90 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x90 + regMod8(a1));
 }
 
 /**
  * sbb (0x98 + 8-bit register offset)
  */
-static void sbb(i80 insn)
+static void sbb()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0x98 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0x98 + regMod8(a1));
 }
 
 /**
  * ana (0xa0 + 8-bit register offset)
  */
-static void ana(i80 insn)
+static void ana()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xa0 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xa0 + regMod8(a1));
 }
 
 /**
  * xra (0xa8 + 8-bit register offset)
  */
-static void xra(i80 insn)
+static void xra()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xa8 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xa8 + regMod8(a1));
 }
 
 /**
  * ora (0xb0 + 8-bit register offset)
  */
-static void ora(i80 insn)
+static void ora()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xb0 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xb0 + regMod8(a1));
 }
 
 /**
  * cmp (0xb8 + 8-bit register offset)
  */
-static void cmp(i80 insn)
+static void cmp()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xb8 + regMod8(insn.a1), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xb8 + regMod8(a1));
 }
 
 /**
  * rnz (0xc0)
  */
-static void rnz(i80 insn)
+static void rnz()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xc0, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xc0);
 }
 
 /**
  * pop (0xc1 + 16 bit register offset)
  */
-static void pop(i80 insn)
+static void pop()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xc1 + regMod16(insn), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xc1 + regMod16());
 }
 
 /**
  * jnz (0xc2)
  */
-static void jnz(i80 insn)
+static void jnz()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xc2, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xc2);
+    a16();
 }
 
 /**
  * jmp (0xc3)
  */
-static void jmp(i80 insn)
+static void jmp()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xc3, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xc3);
+    a16();
 }
 
 /**
  * cnz (0xc4)
  */
-static void cnz(i80 insn)
+static void cnz()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xc4, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xc4);
+    a16();
 }
 
 /**
  * push (0xc5 + 16 bit register offset)
  */
-static void push(i80 insn)
+static void push()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xc5 + regMod16(insn), insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(1, 0xc5 + regMod16());
 }
 
 /**
  * adi (0xc6)
  */
-static void adi(i80 insn)
+static void adi()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xc6, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xc6);
+    imm(IMM8);
 }
 
 /**
  * rst (0xc7 + offset)
  */
-static void rst(i80 insn)
+static void rst()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    auto offset = to!int(insn.a1, 10);
+    argcheck(!a1.empty && a2.empty);
+    auto offset = to!int(a1, 10);
     if (offset >= 0 && offset <= 7)
-        passAct(1, 0xc7 + (offset * 8), insn);
+        passAct(1, 0xc7 + (offset * 8));
     else
         err("invalid reset vector: " ~ to!string(offset));
 }
@@ -794,403 +793,403 @@ static void rst(i80 insn)
 /**
  * rz (0xc8)
  */
-static void rz(i80 insn)
+static void rz()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xc8, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xc8);
 }
 
 /**
  * ret (0xc9)
  */
-static void ret(i80 insn)
+static void ret()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xc9, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xc9);
 }
 
 /**
  * jz (0xca)
  */
-static void jz(i80 insn)
+static void jz()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xca, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xca);
+    a16();
 }
 
 /**
  * cz (0xcc)
  */
-static void cz(i80 insn)
+static void cz()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xcc, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xcc);
+    a16();
 }
 
 /**
  * call (0xcd)
  */
-static void call(i80 insn)
+static void call()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xcd, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xcd);
+    a16();
 }
 
 /**
  * aci (0xce)
  */
-static void aci(i80 insn)
+static void aci()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xce, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xce);
+    imm(IMM8);
 }
 
 /**
  * rnc (0xd0)
  */
-static void rnc(i80 insn)
+static void rnc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xd0, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xd0);
 }
 
 /**
  * jnc (0xd2)
  */
-static void jnc(i80 insn)
+static void jnc()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xd2, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xd2);
+    a16();
 }
 
 /**
  * out (0xd3)
  */
-static void i80_out(i80 insn)
+static void i80_out()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xd3, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xd3);
+    imm(IMM8);
 }
 
 /**
  * cnc (0xd4)
  */
-static void cnc(i80 insn)
+static void cnc()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xd4, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xd4);
+    a16();
 }
 
 /**
  * sui (0xd6)
  */
-static void sui(i80 insn)
+static void sui()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xd6, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xd6);
+    imm(IMM8);
 }
 
 /**
  * rc (0xd8)
  */
-static void rc(i80 insn)
+static void rc()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xd8, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xd8);
 }
 
 /**
  * jc (0xda)
  */
-static void jc(i80 insn)
+static void jc()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xda, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xda);
+    a16();
 }
 
 /**
  * in (0xdb)
  */
-static void i80_in(i80 insn)
+static void i80_in()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xdb, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xdb);
+    imm(IMM8);
 }
 
 /**
  * cc (0xdc)
  */
-static void cc(i80 insn)
+static void cc()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xdc, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xdc);
+    a16();
 }
 
 /**
  * sbi (0xde)
  */
-static void sbi(i80 insn)
+static void sbi()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xde, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xde);
+    imm(IMM8);
 }
 
 /**
  * rpo (0xe0)
  */
-static void rpo(i80 insn)
+static void rpo()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xe0, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xe0);
 }
 
 /**
  * jpo (0xe2)
  */
-static void jpo(i80 insn)
+static void jpo()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xe2, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xe2);
+    a16();
 }
 
 /**
  * xthl (0xe3)
  */
-static void xthl(i80 insn)
+static void xthl()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xe3, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xe3);
 }
 
 /**
  * cpo (0xe4)
  */
-static void cpo(i80 insn)
+static void cpo()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xe4, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xe4);
+    a16();
 }
 
 /**
  * ani (0xe6)
  */
-static void ani(i80 insn)
+static void ani()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xe6, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xe6);
+    imm(IMM8);
 }
 
 /**
  * rpe (0xe8)
  */
-static void rpe(i80 insn)
+static void rpe()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xe8, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xe8);
 }
 
 /**
  * pchl (0xe9)
  */
-static void pchl(i80 insn)
+static void pchl()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xe9, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xe9);
 }
 
 /**
  * jpe (0xea)
  */
-static void jpe(i80 insn)
+static void jpe()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xea, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xea);
+    a16();
 }
 
 /**
  * xchg (0xeb)
  */
-static void xchg(i80 insn)
+static void xchg()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xeb, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xeb);
 }
 
 /**
  * cpe (0xec)
  */
-static void cpe(i80 insn)
+static void cpe()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xec, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xec);
+    a16();
 }
 
 /**
  * xri (0xee)
  */
-static void xri(i80 insn)
+static void xri()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xee, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xee);
+    imm(IMM8);
 }
 
 /**
  * rp (0xf0)
  */
-static void rp(i80 insn)
+static void rp()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xf0, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xf0);
 }
 
 /**
  * jp (0xf2)
  */
-static void jp(i80 insn)
+static void jp()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xf2, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xf2);
+    a16();
 }
 
 /**
  * di (0xf3)
  */
-static void di(i80 insn)
+static void di()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xf3, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xf3);
 }
 
 /**
  * cp (0xf4)
  */
-static void cp(i80 insn)
+static void cp()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xf4, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xf4);
+    a16();
 }
 
 /**
  * ori (0xf6)
  */
-static void ori(i80 insn)
+static void ori()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xf6, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xf6);
+    imm(IMM8);
 }
 
 /**
  * rm (0xf8)
  */
-static void rm(i80 insn)
+static void rm()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xf8, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xf8);
 }
 
 /**
  * sphl (0xf9)
  */
-static void sphl(i80 insn)
+static void sphl()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xf9, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xf9);
 }
 
 /**
  * jm (0xfa)
  */
-static void jm(i80 insn)
+static void jm()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xfa, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xfa);
+    a16();
 }
 
 /**
  * ei (0xfb)
  */
-static void ei(i80 insn)
+static void ei()
 {
-    argcheck(insn.a1.empty && insn.a2.empty);
-    passAct(1, 0xfb, insn);
+    argcheck(a1.empty && a2.empty);
+    passAct(1, 0xfb);
 }
 
 /**
  * cm (0xfc)
  */
-static void cm(i80 insn)
+static void cm()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(3, 0xfc, insn);
-    a16(insn);
+    argcheck(!a1.empty && a2.empty);
+    passAct(3, 0xfc);
+    a16();
 }
 
 /**
  * cpi (0xfe)
  */
-static void cpi(i80 insn)
+static void cpi()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    passAct(2, 0xfe, insn);
-    imm(insn, IMM8);
+    argcheck(!a1.empty && a2.empty);
+    passAct(2, 0xfe);
+    imm(IMM8);
 }
 
 /**
  * Define a constant.
  */
-static void equ(i80 insn)
+static void equ()
 {
-    if (insn.lab.empty)
+    if (lab.empty)
         err("must have a label in equ statement");
 
-    if (insn.a1[insn.a1.length - 1] != 'h')
+    if (a1[a1.length - 1] != 'h')
         err("number must end with 'h'");
-    auto a = to!ushort(chop(insn.a1), 16);
+    auto a = to!ushort(chop(a1), 16);
     if (pass == 1)
-       addsym(insn.lab, a);
+       addsym(lab, a);
 }
 
 /**
  * Place a byte.
  */
-static void db(i80 insn)
+static void db()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    if (isDigit(insn.a1[0])) {
-        if (insn.a1[insn.a1.length - 1] != 'h')
+    argcheck(!a1.empty && a2.empty);
+    if (isDigit(a1[0])) {
+        if (a1[a1.length - 1] != 'h')
             err("number must end with 'h'");
-        passAct(1, to!ubyte(chop(insn.a1), 16), insn);
+        passAct(1, to!ubyte(chop(a1), 16));
     } else {
         if (pass == 1) {
-            if (!insn.lab.empty)
-                addsym(insn.lab, addr);
-            addr += insn.a1.length;
+            if (!lab.empty)
+                addsym(lab, addr);
+            addr += a1.length;
         } else {
-            for (size_t i = 0; i < insn.a1.length; i++)
-                output ~= cast(ubyte)insn.a1[i];
-            addr += insn.a1.length;
+            for (size_t i = 0; i < a1.length; i++)
+                output ~= cast(ubyte)a1[i];
+            addr += a1.length;
         }
     }
 }
@@ -1198,14 +1197,14 @@ static void db(i80 insn)
 /**
  * Place a word.
  */
-static void dw(i80 insn)
+static void dw()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
+    argcheck(!a1.empty && a2.empty);
     if (pass == 1) {
-        if (!insn.lab.empty)
-            addsym(insn.lab, addr);
+        if (!lab.empty)
+            addsym(lab, addr);
     }
-    a16(insn);
+    a16();
 
     addr += 2;
 }
@@ -1213,37 +1212,37 @@ static void dw(i80 insn)
 /**
  * Reserve an area of uninitialized memory.
  */
-static void ds(i80 insn)
+static void ds()
 {
-    argcheck(!insn.a1.empty && insn.a2.empty);
-    if (isDigit(insn.a1[0])) {
-        if (insn.a1[insn.a1.length - 1] != 'h')
+    argcheck(!a1.empty && a2.empty);
+    if (isDigit(a1[0])) {
+        if (a1[a1.length - 1] != 'h')
             err("number must end with 'h'");
     }
 
     if (pass == 1) {
-        if (!insn.lab.empty)
-            addsym(insn.lab, addr);
+        if (!lab.empty)
+            addsym(lab, addr);
     } else {
-        auto a = to!short(chop(insn.a1), 16);
+        auto a = to!short(chop(a1), 16);
         for (size_t i = 0; i < a; i++)
             output ~= cast(ubyte)0;
     }
 
-    addr += to!ushort(chop(insn.a1), 16);
+    addr += to!ushort(chop(a1), 16);
 }
 
 /**
  * Force updated the address counter.
  */
-static void org(i80 insn)
+static void org()
 {
-    argcheck(insn.lab.empty && !insn.a1.empty && insn.a2.empty);
-    if (isDigit(insn.a1[0])) {
-        if (insn.a1[insn.a1.length - 1] != 'h')
+    argcheck(lab.empty && !a1.empty && a2.empty);
+    if (isDigit(a1[0])) {
+        if (a1[a1.length - 1] != 'h')
             err("number must end with 'h'");
         if (pass == 1)
-            addr = to!ushort(chop(insn.a1), 16);
+            addr = to!ushort(chop(a1), 16);
     } else {
         err("org must take a number");
     }
@@ -1252,35 +1251,35 @@ static void org(i80 insn)
 /**
  * End of assembly, even if there is more after.
  */
-static void end(i80 insn)
+static void end()
 {
-    argcheck(insn.lab.empty && insn.a1.empty && insn.a2.empty);
+    argcheck(lab.empty && a1.empty && a2.empty);
     line = line.max - 1;
 }
 
 /**
  * Return the 16 bit register offset.
  */
-static int regMod16(i80 insn)
+static int regMod16()
 {
-    if (insn.a1 == "b") {
+    if (a1 == "b") {
         return 0x00;
-    } else if (insn.a1 == "d") {
+    } else if (a1 == "d") {
         return 0x10;
-    } else if (insn.a1 == "h") {
+    } else if (a1 == "h") {
         return 0x20;
-    } else if (insn.a1 == "psw") {
-        if (insn.op == "pop" || insn.op == "push")
+    } else if (a1 == "psw") {
+        if (op == "pop" || op == "push")
             return 0x30;
         else
-            err("psw may not be used with " ~ insn.op);
-    } else if (insn.a1 == "sp") {
-        if (insn.op != "pop" && insn.op != "push")
+            err("psw may not be used with " ~ op);
+    } else if (a1 == "sp") {
+        if (op != "pop" && op != "push")
             return 0x30;
         else
-            err("sp may not be used with " ~ insn.op);
+            err("sp may not be used with " ~ op);
     } else {
-        err("invalid register for " ~ insn.op);
+        err("invalid register for " ~ op);
     }
 
     /* This will never be reached, but quiets gdc.  */
@@ -1318,16 +1317,16 @@ static int regMod8(string reg)
 /**
  * Get an 8 or 16 bit immediate.
  */
-static void imm(i80 insn, int immtype)
+static void imm(int type)
 {
     ushort dig;
     string check;
     bool found = false;
 
-    if (insn.op == "lxi" || insn.op == "mvi")
-        check = insn.a2;
+    if (op == "lxi" || op == "mvi")
+        check = a2;
     else
-        check = insn.a1;
+        check = a1;
 
     if (isDigit(check[0])) {
         if (check[check.length - 1] != 'h')
@@ -1349,7 +1348,7 @@ static void imm(i80 insn, int immtype)
 
     if (pass == 2) {
         output ~= cast(ubyte)(dig & 0xff);
-        if (immtype == IMM16)
+        if (type == IMM16)
             output ~= cast(ubyte)((dig >> 8) & 0xff);
     }
 }
@@ -1357,18 +1356,18 @@ static void imm(i80 insn, int immtype)
 /**
  * Get a 16-bit address.
  */
-static void a16(i80 insn)
+static void a16()
 {
     ushort dig;
     bool found = false;
 
-    if (isDigit(insn.a1[0])) {
-        if (insn.a1[insn.a1.length - 1] != 'h')
+    if (isDigit(a1[0])) {
+        if (a1[a1.length - 1] != 'h')
             err("number must end with 'h'");
-        dig = to!ushort(chop(insn.a1), 16);
+        dig = to!ushort(chop(a1), 16);
     } else {
         for (size_t i = 0; i < stab.length; i++) {
-            if (insn.a1 == stab[i].name) {
+            if (a1 == stab[i].name) {
                 dig = stab[i].value;
                 found = true;
                 break;
@@ -1376,7 +1375,7 @@ static void a16(i80 insn)
         }
         if (pass == 2) {
             if (!found)
-                err("label " ~ insn.a1 ~ " not defined");
+                err("label " ~ a1 ~ " not defined");
         }
     }
 
