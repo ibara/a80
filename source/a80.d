@@ -1,18 +1,15 @@
-/**
- * Intel 8080 assembler.
- */
-module a80.i80;
 import std.stdio;
+import std.file;
 import std.algorithm;
 import std.string;
-import std.ascii;
 import std.conv;
 import std.exception;
+import std.ascii;
 
 /**
  * Line number.
  */
-static size_t line;
+static size_t lineno;
 
 /**
  * Pass.
@@ -30,20 +27,6 @@ static ubyte[] output;
 static ushort addr;
 
 /**
- * Symbol table.
- */
-struct symtab
-{
-    string name;        /// Symbol name
-    ushort value;       /// Symbol address
-};
-
-/**
- * Symbol table is an array of entries.
- */
-static symtab[] stab;
-
-/**
  * 8 and 16 bit immediates
  */
 enum IMM8 = 8;
@@ -52,33 +35,84 @@ enum IMM16 = 16;
 /**
  * Intel 8080 assembler instruction.
  */
-static string lab;         /// Label
-static string op;          /// Instruction mnemonic
-static string a1;          /// First argument
-static string a2;          /// Second argument
-static string comm;        /// Comment
+static string lab;      /// Label
+static string op;       /// Instruction mnemonic
+static string a1;       /// First argument
+static string a2;       /// Second argument
+static string comm;     /// Comment
+
+/**
+ * Individual symbol table entry.
+ */
+struct symtab
+{
+    string lab;         /// Symbol name
+    ushort value;       /// Symbol value
+};
+
+/**
+ * Symbol table is an array of entries.
+ */
+static symtab[] stab;
+
+/**
+ * Top-level assembly function.
+ * Everything cascades downward from here.
+ * Repeat the parsing twice.
+ * Pass 1 gathers symbols and their addresses/values.
+ * Pass 2 emits code.
+ */
+static void assemble(string[] lines, string outfile)
+{
+    pass = 1;
+    for (lineno = 0; lineno < lines.length; lineno++) {
+        parse(lines[lineno]);
+        process();
+    }
+
+    pass = 2;
+    for (lineno = 0; lineno < lines.length; lineno++) {
+        parse(lines[lineno]);
+        process();
+    }
+
+    fileWrite(outfile);
+}
+
+/**
+ * After all code is emitted, write it out to a file.
+ */
+static void fileWrite(string outfile) {
+    import std.file : write;
+
+    write(outfile, output);
+}
 
 /**
  * Parse each line into (up to) five tokens.
  */
-void parse(string line) {
+static void parse(string line) {
+    /* Reset all our variables.  */
     lab = null;
     op = null;
     a1 = null;
     a2 = null;
     comm = null;
 
-    auto dbFix = 0;
+    /* Remove any whitespace at the beginning of the line.  */
     auto preprocess = stripLeft(line);
 
+    /* Split comment from the rest of the line.  */
     auto splitcomm = preprocess.findSplit(";");
     if (!splitcomm[2].empty)
         comm = strip(splitcomm[2]);
 
+    /* Split second argument from the remainder.  */
     auto splita2 = splitcomm[0].findSplit(",");
     if (!splita2[2].empty)
         a2 = strip(splita2[2]);
 
+    /* Split first argument from the remainder.  */
     auto splita1 = splita2[0].findSplit("\t");
     if (!splita1[2].empty) {
         a1 = strip(splita1[2]);
@@ -92,6 +126,7 @@ void parse(string line) {
     /**
      * Fixup for the db 'string$' case.
      */
+    auto dbFix = 0;
     if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
         (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
         auto newsplit = strip(splitcomm[0]);
@@ -101,6 +136,7 @@ void parse(string line) {
         dbFix = 1;
     }
 
+    /* Split opcode from label.  */
     auto splitop = splita1[0].findSplit(":");
     if (!splitop[1].empty) {
         op = strip(splitop[2]);
@@ -148,41 +184,6 @@ void parse(string line) {
 }
 
 /**
- * Top-level assembly function.
- * Everything cascades downward from here.
- * Repeat the parsing twice.
- * Pass 1 gathers symbols and their addresses/values.
- * Pass 2 emits code.
- */
-void assemble(string[] s, string name)
-{
-    /* Pass 1 */
-    pass = 1;
-    for (line = 0; line < s.length; line++) {
-        parse(s[line]);
-        process();
-    }
-
-    /* Pass 2 */
-    pass = 2;
-    for (line = 0; line < s.length; line++) {
-        parse(s[line]);
-        process();
-    }
-
-    fileWrite(name);
-}
-
-/**
- * After all code is emitted, write it out to a file.
- */
-static void fileWrite(string name) {
-    import std.file : write;
-
-    write(name, output);
-}
-
-/**
  * Figure out which op we have.
  */
 static void process()
@@ -197,9 +198,7 @@ static void process()
     }
 
     /**
-     * Remember: we're trying to demystify.
-     * You (the reader) can do better.
-     * Perhaps try a hash table?
+     * List of all valid opcodes.
      */
     if (op == "nop")
         nop();
@@ -380,30 +379,39 @@ static void process()
 /**
  * Take action depending on which pass this is.
  */
-static void passAct(ushort a, int b)
+static void passAct(ushort size, int outbyte)
 {
     if (pass == 1) {
+        /* Add new symbol if we have a label.  */
         if (!lab.empty)
-            addsym(lab, addr);
-        addr += a;
+            addsym();
+
+        /* Increment address counter by size of instruction.  */
+        addr += size;
     } else {
-        if (b != -1)
-            output ~= cast(ubyte)b;
+        /**
+         * Output the byte representing the opcode.
+         * If the opcode carries additional information
+         *   (e.g., immediate or address), we will output that
+         *   in a separate helper function.
+         */
+        if (outbyte >= 0)
+            output ~= cast(ubyte)outbyte;
     }
 }
 
 /**
  * Add a symbol to the symbol table.
  */
-static void addsym(string lab, ushort a)
+static void addsym()
 {
     for (size_t i = 0; i < stab.length; i++) {
-        if (lab == stab[i].name)
+        if (lab == stab[i].lab)
             err("duplicate label: " ~ lab);
     }
 
-    symtab nsym = { lab, a };
-    stab ~= nsym;
+    symtab newsym = { lab, addr };
+    stab ~= newsym;
 }
 
 /**
@@ -722,7 +730,7 @@ static void rnz()
 }
 
 /**
- * pop (0xc1 + 16 bit register offset)
+ * pop (0xc1 + 16-bit register offset)
  */
 static void pop()
 {
@@ -761,7 +769,7 @@ static void cnz()
 }
 
 /**
- * push (0xc5 + 16 bit register offset)
+ * push (0xc5 + 16-bit register offset)
  */
 static void push()
 {
@@ -1163,18 +1171,22 @@ static void cpi()
  */
 static void equ()
 {
-    ushort a;
+    ushort value;
 
     if (lab.empty)
         err("must have a label in equ statement");
 
     if (a1[0] == '$')
-        a = dollar();
+        value = dollar();
     else
-        a = numcheck(a1);
+        value = numcheck(a1);
 
-    if (pass == 1)
-       addsym(lab, a);
+    if (pass == 1) {
+       auto temp = addr;
+       addr = value;
+       addsym();
+       addr = temp;
+    }
 }
 
 /**
@@ -1184,12 +1196,12 @@ static void db()
 {
     argcheck(!a1.empty && a2.empty);
     if (isDigit(a1[0])) {
-        auto a = numcheck(a1);
-        passAct(1, a);
+        auto num = numcheck(a1);
+        passAct(1, num);
     } else {
         if (pass == 1) {
             if (!lab.empty)
-                addsym(lab, addr);
+                addsym();
             addr += a1.length;
         } else {
             for (size_t i = 0; i < a1.length; i++)
@@ -1207,7 +1219,7 @@ static void dw()
     argcheck(!a1.empty && a2.empty);
     if (pass == 1) {
         if (!lab.empty)
-            addsym(lab, addr);
+            addsym();
     }
     a16();
 
@@ -1223,10 +1235,10 @@ static void ds()
 
     if (pass == 1) {
         if (!lab.empty)
-            addsym(lab, addr);
+            addsym();
     } else {
-        auto a = numcheck(a1);
-        for (size_t i = 0; i < a; i++)
+        auto num = numcheck(a1);
+        for (size_t i = 0; i < num; i++)
             output ~= cast(ubyte)0;
     }
 
@@ -1273,7 +1285,76 @@ static void title()
 static void end()
 {
     argcheck(lab.empty && a1.empty && a2.empty);
-    line = line.max - 1;
+    lineno = lineno.max - 1;
+}
+
+/**
+ * Get an 8-bit or 16-bit immediate.
+ */
+static void imm(int type)
+{
+    ushort num;
+    string arg;
+    bool found = false;
+
+    if (op == "lxi" || op == "mvi")
+        arg = a2;
+    else
+        arg = a1;
+
+    if (isDigit(arg[0])) {
+        num = numcheck(arg);
+    } else {
+        if (pass == 2) {
+            for (size_t i = 0; i < stab.length; i++) {
+                if (arg == stab[i].lab) {
+                    num = stab[i].value;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                err("label " ~ arg ~ " not defined");
+        }
+    }
+
+    if (pass == 2) {
+        output ~= cast(ubyte)(num & 0xff);
+        if (type == IMM16)
+            output ~= cast(ubyte)((num >> 8) & 0xff);
+    }
+}
+
+/**
+ * Get a 16-bit address.
+ */
+static void a16()
+{
+    ushort num;
+    bool found = false;
+
+    if (isDigit(a1[0])) {
+        num = numcheck(a1);
+    } else {
+        for (size_t i = 0; i < stab.length; i++) {
+            if (a1 == stab[i].lab) {
+                num = stab[i].value;
+                found = true;
+                break;
+            }
+        }
+
+        if (pass == 2) {
+            if (!found)
+                err("label " ~ a1 ~ " not defined");
+        }
+    }
+
+    if (pass == 2) {
+        output ~= cast(ubyte)(num & 0xff);
+        output ~= cast(ubyte)((num >> 8) & 0xff);
+    }
 }
 
 /**
@@ -1306,7 +1387,7 @@ static int regMod16()
 }
 
 /**
- * Return the 8 bit register offset.
+ * Return the 8-bit register offset.
  */
 static int regMod8(string reg)
 {
@@ -1334,88 +1415,12 @@ static int regMod8(string reg)
 }
 
 /**
- * Get an 8 or 16 bit immediate.
- */
-static void imm(int type)
-{
-    ushort dig;
-    string check;
-    bool found = false;
-
-    if (op == "lxi" || op == "mvi")
-        check = a2;
-    else
-        check = a1;
-
-    if (isDigit(check[0])) {
-        dig = numcheck(check);
-    } else {
-        for (size_t i = 0; i < stab.length; i++) {
-            if (check == stab[i].name) {
-                dig = stab[i].value;
-                found = true;
-                break;
-            }
-        }
-        if (pass == 2) {
-            if (!found)
-                err("label " ~ check ~ " not defined");
-        }
-    }
-
-    if (pass == 2) {
-        output ~= cast(ubyte)(dig & 0xff);
-        if (type == IMM16)
-            output ~= cast(ubyte)((dig >> 8) & 0xff);
-    }
-}
-
-/**
- * Get a 16-bit address.
- */
-static void a16()
-{
-    ushort dig;
-    bool found = false;
-
-    if (isDigit(a1[0])) {
-        dig = numcheck(a1);
-    } else {
-        for (size_t i = 0; i < stab.length; i++) {
-            if (a1 == stab[i].name) {
-                dig = stab[i].value;
-                found = true;
-                break;
-            }
-        }
-        if (pass == 2) {
-            if (!found)
-                err("label " ~ a1 ~ " not defined");
-        }
-    }
-
-    if (pass == 2) {
-        output ~= cast(ubyte)(dig & 0xff);
-        output ~= cast(ubyte)((dig >> 8) & 0xff);
-    }
-}
-
-/**
- * Nice error messages.
- */
-static void err(string msg)
-{
-    stderr.writeln("a80: " ~ to!string(line + 1) ~ ": " ~ msg);
-    enforce(0);
-}
-
-/**
  * Check arguments.
  */
 static void argcheck(bool passed)
 {
     if (passed == false)
-        err("arguments not correct for opcode");
+        err("arguments not correct for opcode: " ~ op);
 }
 
 /**
@@ -1458,4 +1463,43 @@ static ushort dollar()
     }
 
     return num;
+}
+
+/**
+ * Nice error messages.
+ */
+static void err(string msg)
+{
+    stderr.writeln("a80: " ~ to!string(lineno + 1) ~ ": " ~ msg);
+    enforce(0);
+}
+
+/**
+ * All good things start with a single function.
+ */
+void main(string[] args)
+{
+    /**
+     * Make sure the user provides only one input file.
+     */
+    if (args.length != 2) {
+        stderr.writeln("usage: a80 file.asm");
+        return;
+    }
+
+    /**
+     * Create an array of lines from the input file.
+     */
+    string[] lines = splitLines(cast(string)read(args[1]));
+
+    /**
+     * Name output file the same as the input but with .com ending.
+     */
+    auto split = args[1].findSplit(".asm");
+    auto outfile = split[0] ~ ".com";
+
+    /**
+     * Do the work.
+     */
+    assemble(lines, outfile);
 }
