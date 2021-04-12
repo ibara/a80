@@ -12,13 +12,13 @@ document.
 
 `a80` also is quite conscious about its design practice and
 implementation. It is written to be the subject of a series of
-[blog posts](https://briancallahan.net/blog/) in which we attempt
-to demystify the building of programming tools, and as such very
-intentionally does not use some very obvious data structures. And
-it may make some seemingly peculiar design choices. My goal is to
-have written a real assembler for a real CPU that you can still
-purchase today (in the form of the Z80) that true beginners can
-come to understand.
+[blog posts](https://briancallahan.net/blog/20210408.html) in
+which we attempt to demystify the building of programming tools,
+and as such very intentionally does not use some very obvious data
+structures. And it may make some seemingly peculiar design choices.
+My goal is to have written a real assembler for a real CPU that you
+can still purchase today (in the form of the Z80) that true
+beginners can come to understand.
 
 After the blog series, if we want to turn this into a clone of an
 existing CP/M assembler, I'm all for it.
