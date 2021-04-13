@@ -136,7 +136,7 @@ static void parse(string line) {
         dbFix = 1;
     }
 
-    /* Split opcode from label.  */
+    /* Split op from label.  */
     auto splitop = splita1[0].findSplit(":");
     if (!splitop[1].empty) {
         op = strip(splitop[2]);
@@ -198,7 +198,7 @@ static void process()
     }
 
     /**
-     * List of all valid opcodes.
+     * List of all valid mnemonics.
      */
     if (op == "nop")
         nop();
@@ -373,7 +373,7 @@ static void process()
     else if (op == "end")
         end();
     else
-        err("unknown opcode: " ~ op);
+        err("unknown mnemonic: " ~ op);
 }
 
 /**
@@ -1420,7 +1420,7 @@ static int regMod8(string reg)
 static void argcheck(bool passed)
 {
     if (passed == false)
-        err("arguments not correct for opcode: " ~ op);
+        err("arguments not correct for mnemonic: " ~ op);
 }
 
 /**
