@@ -156,7 +156,8 @@ static void parse(string line) {
 
             lab = strip(op);
                 op = strip(equFix[1]);
-        a1 = strip(equFix[2]);
+
+            a1 = strip(equFix[2]);
         }
     }
 
@@ -1195,6 +1196,7 @@ static void equ()
 static void db()
 {
     argcheck(!a1.empty && a2.empty);
+
     if (isDigit(a1[0])) {
         auto num = numcheck(a1);
         passAct(1, num);
@@ -1217,6 +1219,7 @@ static void db()
 static void dw()
 {
     argcheck(!a1.empty && a2.empty);
+
     if (pass == 1) {
         if (!lab.empty)
             addsym();
