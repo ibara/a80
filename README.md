@@ -70,6 +70,14 @@ input by using their hex code: `db	3b` will input a semicolon
 and `db	27` will input a single quote. This is a limitation of the
 parser and is welcome to be fixed.
 
+Expression parser
+-----------------
+There is none. That is to keep things simple.
+
+The `equ` pseudo-op does allow for `$` and very simple `$+number`
+expressions only. No spaces in expressions. Valid expression
+operands are `+`, `-`, `*`, `/`, and `%`.
+
 License
 -------
 ISC license. See `LICENSE` for more information.
