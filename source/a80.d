@@ -1254,6 +1254,7 @@ static void ds()
 static void org()
 {
     argcheck(lab.empty && !a1.empty && a2.empty);
+
     if (isDigit(a1[0])) {
         if (pass == 1)
             addr = numcheck(a1);
