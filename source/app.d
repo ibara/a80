@@ -175,10 +175,16 @@ static void parse(string line) {
         i++;
         for (; i < line.length; i++) {
             if (line[i] == '\'') {
-                auto strend = i;
-                a1 = line[(a1start + 1)..strend];
-                break;
+                if (i != line.length - 1 && line[i + 1] == '\'') {
+                    a1 ~= '\'';
+                    i++;
+                    continue;
+                } else {
+                    break;
+                }
             }
+
+            a1 ~= line[i];
         }
 
         if (line[i] != '\'')
