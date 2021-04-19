@@ -92,6 +92,37 @@ static void fileWrite(string outfile) {
  * Parse each line into (up to) five tokens.
  */
 static void parse(string line) {
+    size_t i = 0;
+
+    /* Answers the question: Do we have more to process after whitespace?  */
+    bool whitespace()
+    {
+        while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
+               line[i] == ';')) {
+            if (line[i] == ';') {
+                comm = line[i..$];
+                return false;
+            }
+
+            i++;
+        }
+
+        if (i == line.length)
+            return false;
+
+        return true;
+    }
+
+    /* Is this the end of the token?  */
+    bool endoftoken()
+    {
+        if (line[i] == ' ' || line[i] == '\t' || line[i] == ';' ||
+            line[i] == '\n' || line[i] == '\0')
+            return true;
+
+        return false;
+    }
+
     /* Reset all our variables.  */
     lab = null;
     op = null;
@@ -99,89 +130,96 @@ static void parse(string line) {
     a2 = null;
     comm = null;
 
-    /* Remove any whitespace at the beginning of the line.  */
-    auto preprocess = stripLeft(line);
+    if (line.length == 0)
+        return;
 
-    /* Split comment from the rest of the line.  */
-    auto splitcomm = preprocess.findSplit(";");
-    if (!splitcomm[2].empty)
-        comm = strip(splitcomm[2]);
+    if (line[i] != ' ' && line[i] != '\t') {
+        size_t labend;
+        for (; i < line.length; i++) {
+            if (endoftoken() || line[i] == ':') {
+                labend = i;
 
-    /* Split second argument from the remainder.  */
-    auto splita2 = splitcomm[0].findSplit(",");
-    if (!splita2[2].empty)
-        a2 = strip(splita2[2]);
+                lab = line[0..labend];
 
-    /* Split first argument from the remainder.  */
-    auto splita1 = splita2[0].findSplit("\t");
-    if (!splita1[2].empty) {
-        a1 = strip(splita1[2]);
-    } else {
-        splita1 = splita2[0].findSplit(" ");
-        if (!splita1[2].empty) {
-            a1 = strip(splita1[2]);
-        }
-    }
+                if (line[i] == ':')
+                    i++;
 
-    /**
-     * Fixup for the db 'string$' case.
-     */
-    auto dbFix = 0;
-    if ((!a1.empty && (a1[0] == '\'' || a1[a1.length - 1] == '\'')) ||
-        (!a2.empty && (a2[0] == '\'' || a2[a2.length - 1] == '\''))) {
-        auto newsplit = strip(splitcomm[0]);
-        splita1 = newsplit.findSplit("'");
-        a1 = chop(splita1[2]);
-        a2 = null;
-        dbFix = 1;
-    }
-
-    /* Split op from label.  */
-    auto splitop = splita1[0].findSplit(":");
-    if (!splitop[1].empty) {
-        op = strip(splitop[2]);
-        lab = strip(splitop[0]);
-    } else {
-        op = strip(splitop[0]);
-    }
-
-    /**
-     * Fixup for equ statements.
-     */
-    if (dbFix == 0) {
-        auto equFix = a1.findSplit("equ");
-        if (equFix[1] == "equ") {
-            if (!lab.empty || !a2.empty)
-                err("Invalid equ statement");
-
-            lab = strip(op);
-                op = strip(equFix[1]);
-
-            a1 = strip(equFix[2]);
-        }
-    }
-
-    /**
-     * Fixup for the label: op case.
-     */
-    if (dbFix == 0) {
-        auto opFix = a1.findSplit("\t");
-        if (!opFix[1].empty) {
-            op = strip(opFix[0]);
-            a1 = strip(opFix[2]);
-        } else {
-            opFix = a1.findSplit(" ");
-            if (!opFix[1].empty) {
-                op = strip(opFix[0]);
-                a1 = strip(opFix[2]);
-            } else {
-                if (op.empty && !a1.empty && a2.empty) {
-                    op = a1;
-                    a1 = null;
-                }
+                break;
             }
         }
     }
+
+    if (whitespace() == false)
+        return;
+
+    auto opstart = i;
+    for (; i < line.length; i++) {
+        if (endoftoken()) {
+            auto opend = i;
+            op = line[opstart..opend];
+            break;
+        }
+
+    }
+
+    if (i == line.length) {
+        op = line[opstart..$];
+        return;
+    }
+
+    if (whitespace() == false)
+        return;
+
+    auto a1start = i;
+    if (line[i] == '\'') {
+        i++;
+        for (; i < line.length; i++) {
+            if (line[i] == '\'') {
+                auto strend = i;
+                a1 = line[(a1start + 1)..strend];
+                break;
+            }
+        }
+
+        if (line[i] != '\'')
+            err("unterminated string");
+
+        i++;
+    } else {
+        for (; i < line.length; i++) {
+            if (endoftoken() || line[i] == ',') {
+                auto a1end = i;
+                a1 = line[a1start..a1end];
+                if (line[i] == ',')
+                    i++;
+                break;
+            }
+        }
+
+        if (i == line.length) {
+            a1 = line[a1start..$];
+            return;
+        }
+    }
+
+    if (whitespace() == false)
+        return;
+
+    auto a2start = i;
+    for (; i < line.length; i++) {
+        if (endoftoken()) {
+            auto a2end = i;
+            a2 = line[a2start..a2end];
+            break;
+        }
+    }
+
+    if (i == line.length) {
+        a2 = line[a2start..$];
+        return;
+    }
+
+    whitespace();
 }
 
 /**
