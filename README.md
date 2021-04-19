@@ -36,9 +36,10 @@ Syntax
 ------
 A line of assembly takes the following form:
 ```
-[label:]	[op	[arg1[, arg2]]]	[; comment]
+[label:] [op [arg1[, arg2]]] [; comment]
 ```
-An example of an assembly program can be found in `fib.asm`.
+Example assembly programs can be found in `hello.asm`, `fib.asm`,
+and `mul.asm`.
 
 `a80` only understands Intel 8080 opcodes.
 
@@ -59,16 +60,7 @@ compared to other CP/M assemblers.
 Strings
 -------
 The `DB` pseudo-op is available. Strings can be written within
-single quotes. Non-numeric, non-comma, non-semicolon, and
-non-single quote single characters will be interpreted to ASCII.
-
-If you want a comma you need to use `db	2c` or put it in a string.
-
-Both the semicolon and the single quote are illegal in strings and
-cannot be written as a single character. However, they can still be
-input by using their hex code: `db	3b` will input a semicolon
-and `db	27` will input a single quote. This is a limitation of the
-parser and is welcome to be fixed.
+single quotes. The multi-comma syntax is not available.
 
 Expression parser
 -----------------
