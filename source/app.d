@@ -9,22 +9,22 @@ import std.ascii;
 /**
  * Line number.
  */
-static size_t lineno;
+private size_t lineno;
 
 /**
  * Pass.
  */
-static int pass;
+private int pass;
 
 /**
  * Output stored in memory until we're finished.
  */
-static ubyte[] output;
+private ubyte[] output;
 
 /**
  * Address for labels.
  */
-static ushort addr;
+private ushort addr;
 
 /**
  * 8 and 16 bit immediates
@@ -35,11 +35,11 @@ enum IMM16 = 16;
 /**
  * Intel 8080 assembler instruction.
  */
-static string lab;      /// Label
-static string op;       /// Instruction mnemonic
-static string a1;       /// First argument
-static string a2;       /// Second argument
-static string comm;     /// Comment
+private string lab;      /// Label
+private string op;       /// Instruction mnemonic
+private string a1;       /// First argument
+private string a2;       /// Second argument
+private string comm;     /// Comment
 
 /**
  * Individual symbol table entry.
@@ -53,7 +53,7 @@ struct symtab
 /**
  * Symbol table is an array of entries.
  */
-static symtab[] stab;
+private symtab[] stab;
 
 /**
  * Top-level assembly function.
@@ -62,7 +62,7 @@ static symtab[] stab;
  * Pass 1 gathers symbols and their addresses/values.
  * Pass 2 emits code.
  */
-static void assemble(string[] lines, string outfile)
+private void assemble(string[] lines, string outfile)
 {
     pass = 1;
     for (lineno = 0; lineno < lines.length; lineno++) {
@@ -82,7 +82,7 @@ static void assemble(string[] lines, string outfile)
 /**
  * After all code is emitted, write it out to a file.
  */
-static void fileWrite(string outfile) {
+private void fileWrite(string outfile) {
     import std.file : write;
 
     write(outfile, output);
@@ -91,7 +91,7 @@ static void fileWrite(string outfile) {
 /**
  * Parse each line into (up to) five tokens.
  */
-static void parse(string line) {
+private void parse(string line) {
     size_t i = 0;
 
     /* Answers the question: Do we have more to process after whitespace?  */
@@ -231,7 +231,7 @@ static void parse(string line) {
 /**
  * Figure out which op we have.
  */
-static void process()
+private void process()
 {
     /**
      * Special case for if you put a label by itself on a line.
@@ -424,7 +424,7 @@ static void process()
 /**
  * Take action depending on which pass this is.
  */
-static void passAct(ushort size, int outbyte)
+private void passAct(ushort size, int outbyte)
 {
     if (pass == 1) {
         /* Add new symbol if we have a label.  */
@@ -448,7 +448,7 @@ static void passAct(ushort size, int outbyte)
 /**
  * Add a symbol to the symbol table.
  */
-static void addsym()
+private void addsym()
 {
     for (size_t i = 0; i < stab.length; i++) {
         if (lab == stab[i].lab)
@@ -462,7 +462,7 @@ static void addsym()
 /**
  * nop (0x00)
  */
-static void nop()
+private void nop()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x00);
@@ -471,7 +471,7 @@ static void nop()
 /**
  * lxi (0x01 + 16 bit register offset)
  */
-static void lxi()
+private void lxi()
 {
     argcheck(!a1.empty && !a2.empty);
     passAct(3, 0x01 + regMod16());
@@ -481,7 +481,7 @@ static void lxi()
 /**
  * stax (0x02 + 16 bit register offset)
  */
-static void stax()
+private void stax()
 {
     argcheck(!a1.empty && a2.empty);
     if (a1 == "b")
@@ -495,7 +495,7 @@ static void stax()
 /**
  * inx (0x03 + 16 bit register offset)
  */
-static void inx()
+private void inx()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x03 + regMod16());
@@ -504,7 +504,7 @@ static void inx()
 /**
  * inr (0x04 + (8 bit register offset << 3))
  */
-static void inr()
+private void inr()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x04 + (regMod8(a1) << 3));
@@ -513,7 +513,7 @@ static void inr()
 /**
  * dcr (0x05 + (8 bit register offset << 3))
  */
-static void dcr()
+private void dcr()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x05 + (regMod8(a1) << 3));
@@ -522,7 +522,7 @@ static void dcr()
 /**
  * mvi (0x06 + (8 bit register offset << 3))
  */
-static void mvi()
+private void mvi()
 {
     argcheck(!a1.empty && !a2.empty);
     passAct(2, 0x06 + (regMod8(a1) << 3));
@@ -532,7 +532,7 @@ static void mvi()
 /**
  * rcl (0x07)
  */
-static void rlc()
+private void rlc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x07);
@@ -541,7 +541,7 @@ static void rlc()
 /**
  * dad (0x09 + 16 bit register offset)
  */
-static void dad()
+private void dad()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x09 + regMod16());
@@ -550,7 +550,7 @@ static void dad()
 /**
  * ldax (0x0a + 16 bit register offset)
  */
-static void ldax()
+private void ldax()
 {
     argcheck(!a1.empty && a2.empty);
     if (a1 == "b")
@@ -564,7 +564,7 @@ static void ldax()
 /**
  * dcx (0x0b + 16 bit register offset)
  */
-static void dcx()
+private void dcx()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x0b + regMod16());
@@ -573,7 +573,7 @@ static void dcx()
 /**
  * rrc (0x0f)
  */
-static void rrc()
+private void rrc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x0f);
@@ -582,7 +582,7 @@ static void rrc()
 /**
  * ral (0x17)
  */
-static void ral()
+private void ral()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x17);
@@ -591,7 +591,7 @@ static void ral()
 /**
  * rar (0x1f)
  */
-static void rar()
+private void rar()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x1f);
@@ -600,7 +600,7 @@ static void rar()
 /**
  * shld (0x22)
  */
-static void shld()
+private void shld()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0x22);
@@ -610,7 +610,7 @@ static void shld()
 /**
  * daa (0x27)
  */
-static void daa()
+private void daa()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x27);
@@ -619,7 +619,7 @@ static void daa()
 /**
  * lhld (0x2a)
  */
-static void lhld()
+private void lhld()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0x2a);
@@ -629,7 +629,7 @@ static void lhld()
 /**
  * cma (0x2f)
  */
-static void cma()
+private void cma()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x2f);
@@ -638,7 +638,7 @@ static void cma()
 /**
  * sta (0x32)
  */
-static void sta()
+private void sta()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0x32);
@@ -648,7 +648,7 @@ static void sta()
 /**
  * stc (0x37)
  */
-static void stc()
+private void stc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x37);
@@ -657,7 +657,7 @@ static void stc()
 /**
  * lda (0x3a)
  */
-static void lda()
+private void lda()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0x3a);
@@ -667,7 +667,7 @@ static void lda()
 /**
  * cmc (0x3f)
  */
-static void cmc()
+private void cmc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x3f);
@@ -678,7 +678,7 @@ static void cmc()
  * We allow mov m, m (0x76)
  * But that will result in HLT.
  */
-static void mov()
+private void mov()
 {
     argcheck(!a1.empty && !a2.empty);
     passAct(1, 0x40 + (regMod8(a1) << 3) + regMod8(a2));
@@ -687,7 +687,7 @@ static void mov()
 /**
  * hlt (0x76)
  */
-static void hlt()
+private void hlt()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0x76);
@@ -696,7 +696,7 @@ static void hlt()
 /**
  * add (0x80 + 8-bit register offset)
  */
-static void add()
+private void add()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x80 + regMod8(a1));
@@ -705,7 +705,7 @@ static void add()
 /**
  * adc (0x88 + 8-bit register offset)
  */
-static void adc()
+private void adc()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x88 + regMod8(a1));
@@ -714,7 +714,7 @@ static void adc()
 /**
  * sub (0x90 + 8-bit register offset)
  */
-static void sub()
+private void sub()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x90 + regMod8(a1));
@@ -723,7 +723,7 @@ static void sub()
 /**
  * sbb (0x98 + 8-bit register offset)
  */
-static void sbb()
+private void sbb()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0x98 + regMod8(a1));
@@ -732,7 +732,7 @@ static void sbb()
 /**
  * ana (0xa0 + 8-bit register offset)
  */
-static void ana()
+private void ana()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xa0 + regMod8(a1));
@@ -741,7 +741,7 @@ static void ana()
 /**
  * xra (0xa8 + 8-bit register offset)
  */
-static void xra()
+private void xra()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xa8 + regMod8(a1));
@@ -750,7 +750,7 @@ static void xra()
 /**
  * ora (0xb0 + 8-bit register offset)
  */
-static void ora()
+private void ora()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xb0 + regMod8(a1));
@@ -759,7 +759,7 @@ static void ora()
 /**
  * cmp (0xb8 + 8-bit register offset)
  */
-static void cmp()
+private void cmp()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xb8 + regMod8(a1));
@@ -768,7 +768,7 @@ static void cmp()
 /**
  * rnz (0xc0)
  */
-static void rnz()
+private void rnz()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xc0);
@@ -777,7 +777,7 @@ static void rnz()
 /**
  * pop (0xc1 + 16-bit register offset)
  */
-static void pop()
+private void pop()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xc1 + regMod16());
@@ -786,7 +786,7 @@ static void pop()
 /**
  * jnz (0xc2)
  */
-static void jnz()
+private void jnz()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xc2);
@@ -796,7 +796,7 @@ static void jnz()
 /**
  * jmp (0xc3)
  */
-static void jmp()
+private void jmp()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xc3);
@@ -806,7 +806,7 @@ static void jmp()
 /**
  * cnz (0xc4)
  */
-static void cnz()
+private void cnz()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xc4);
@@ -816,7 +816,7 @@ static void cnz()
 /**
  * push (0xc5 + 16-bit register offset)
  */
-static void push()
+private void push()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(1, 0xc5 + regMod16());
@@ -825,7 +825,7 @@ static void push()
 /**
  * adi (0xc6)
  */
-static void adi()
+private void adi()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xc6);
@@ -835,7 +835,7 @@ static void adi()
 /**
  * rst (0xc7 + offset)
  */
-static void rst()
+private void rst()
 {
     argcheck(!a1.empty && a2.empty);
     auto offset = to!int(a1, 10);
@@ -848,7 +848,7 @@ static void rst()
 /**
  * rz (0xc8)
  */
-static void rz()
+private void rz()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xc8);
@@ -857,7 +857,7 @@ static void rz()
 /**
  * ret (0xc9)
  */
-static void ret()
+private void ret()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xc9);
@@ -866,7 +866,7 @@ static void ret()
 /**
  * jz (0xca)
  */
-static void jz()
+private void jz()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xca);
@@ -876,7 +876,7 @@ static void jz()
 /**
  * cz (0xcc)
  */
-static void cz()
+private void cz()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xcc);
@@ -886,7 +886,7 @@ static void cz()
 /**
  * call (0xcd)
  */
-static void call()
+private void call()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xcd);
@@ -896,7 +896,7 @@ static void call()
 /**
  * aci (0xce)
  */
-static void aci()
+private void aci()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xce);
@@ -906,7 +906,7 @@ static void aci()
 /**
  * rnc (0xd0)
  */
-static void rnc()
+private void rnc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xd0);
@@ -915,7 +915,7 @@ static void rnc()
 /**
  * jnc (0xd2)
  */
-static void jnc()
+private void jnc()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xd2);
@@ -925,7 +925,7 @@ static void jnc()
 /**
  * out (0xd3)
  */
-static void i80_out()
+private void i80_out()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xd3);
@@ -935,7 +935,7 @@ static void i80_out()
 /**
  * cnc (0xd4)
  */
-static void cnc()
+private void cnc()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xd4);
@@ -945,7 +945,7 @@ static void cnc()
 /**
  * sui (0xd6)
  */
-static void sui()
+private void sui()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xd6);
@@ -955,7 +955,7 @@ static void sui()
 /**
  * rc (0xd8)
  */
-static void rc()
+private void rc()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xd8);
@@ -964,7 +964,7 @@ static void rc()
 /**
  * jc (0xda)
  */
-static void jc()
+private void jc()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xda);
@@ -974,7 +974,7 @@ static void jc()
 /**
  * in (0xdb)
  */
-static void i80_in()
+private void i80_in()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xdb);
@@ -984,7 +984,7 @@ static void i80_in()
 /**
  * cc (0xdc)
  */
-static void cc()
+private void cc()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xdc);
@@ -994,7 +994,7 @@ static void cc()
 /**
  * sbi (0xde)
  */
-static void sbi()
+private void sbi()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xde);
@@ -1004,7 +1004,7 @@ static void sbi()
 /**
  * rpo (0xe0)
  */
-static void rpo()
+private void rpo()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xe0);
@@ -1013,7 +1013,7 @@ static void rpo()
 /**
  * jpo (0xe2)
  */
-static void jpo()
+private void jpo()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xe2);
@@ -1023,7 +1023,7 @@ static void jpo()
 /**
  * xthl (0xe3)
  */
-static void xthl()
+private void xthl()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xe3);
@@ -1032,7 +1032,7 @@ static void xthl()
 /**
  * cpo (0xe4)
  */
-static void cpo()
+private void cpo()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xe4);
@@ -1042,7 +1042,7 @@ static void cpo()
 /**
  * ani (0xe6)
  */
-static void ani()
+private void ani()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xe6);
@@ -1052,7 +1052,7 @@ static void ani()
 /**
  * rpe (0xe8)
  */
-static void rpe()
+private void rpe()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xe8);
@@ -1061,7 +1061,7 @@ static void rpe()
 /**
  * pchl (0xe9)
  */
-static void pchl()
+private void pchl()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xe9);
@@ -1070,7 +1070,7 @@ static void pchl()
 /**
  * jpe (0xea)
  */
-static void jpe()
+private void jpe()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xea);
@@ -1080,7 +1080,7 @@ static void jpe()
 /**
  * xchg (0xeb)
  */
-static void xchg()
+private void xchg()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xeb);
@@ -1089,7 +1089,7 @@ static void xchg()
 /**
  * cpe (0xec)
  */
-static void cpe()
+private void cpe()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xec);
@@ -1099,7 +1099,7 @@ static void cpe()
 /**
  * xri (0xee)
  */
-static void xri()
+private void xri()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xee);
@@ -1109,7 +1109,7 @@ static void xri()
 /**
  * rp (0xf0)
  */
-static void rp()
+private void rp()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xf0);
@@ -1118,7 +1118,7 @@ static void rp()
 /**
  * jp (0xf2)
  */
-static void jp()
+private void jp()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xf2);
@@ -1128,7 +1128,7 @@ static void jp()
 /**
  * di (0xf3)
  */
-static void di()
+private void di()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xf3);
@@ -1137,7 +1137,7 @@ static void di()
 /**
  * cp (0xf4)
  */
-static void cp()
+private void cp()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xf4);
@@ -1147,7 +1147,7 @@ static void cp()
 /**
  * ori (0xf6)
  */
-static void ori()
+private void ori()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xf6);
@@ -1157,7 +1157,7 @@ static void ori()
 /**
  * rm (0xf8)
  */
-static void rm()
+private void rm()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xf8);
@@ -1166,7 +1166,7 @@ static void rm()
 /**
  * sphl (0xf9)
  */
-static void sphl()
+private void sphl()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xf9);
@@ -1175,7 +1175,7 @@ static void sphl()
 /**
  * jm (0xfa)
  */
-static void jm()
+private void jm()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xfa);
@@ -1185,7 +1185,7 @@ static void jm()
 /**
  * ei (0xfb)
  */
-static void ei()
+private void ei()
 {
     argcheck(a1.empty && a2.empty);
     passAct(1, 0xfb);
@@ -1194,7 +1194,7 @@ static void ei()
 /**
  * cm (0xfc)
  */
-static void cm()
+private void cm()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(3, 0xfc);
@@ -1204,7 +1204,7 @@ static void cm()
 /**
  * cpi (0xfe)
  */
-static void cpi()
+private void cpi()
 {
     argcheck(!a1.empty && a2.empty);
     passAct(2, 0xfe);
@@ -1214,7 +1214,7 @@ static void cpi()
 /**
  * Define a constant.
  */
-static void equ()
+private void equ()
 {
     ushort value;
 
@@ -1237,7 +1237,7 @@ static void equ()
 /**
  * Place a byte.
  */
-static void db()
+private void db()
 {
     argcheck(!a1.empty && a2.empty);
 
@@ -1260,7 +1260,7 @@ static void db()
 /**
  * Place a word.
  */
-static void dw()
+private void dw()
 {
     argcheck(!a1.empty && a2.empty);
 
@@ -1276,7 +1276,7 @@ static void dw()
 /**
  * Reserve an area of uninitialized memory.
  */
-static void ds()
+private void ds()
 {
     argcheck(!a1.empty && a2.empty);
 
@@ -1295,7 +1295,7 @@ static void ds()
 /**
  * Force updated the address counter.
  */
-static void org()
+private void org()
 {
     argcheck(lab.empty && !a1.empty && a2.empty);
 
@@ -1312,7 +1312,7 @@ static void org()
  * Not useful for us, since we don't generate a listing file.
  * Check and ignore.
  */
-static void name()
+private void name()
 {
     argcheck(lab.empty && !a1.empty && a2.empty);
 }
@@ -1322,7 +1322,7 @@ static void name()
  * Not useful for us, since we don't generate a listing file.
  * Check and ignore.
  */
-static void title()
+private void title()
 {
     argcheck(lab.empty && !a1.empty && a2.empty);
 }
@@ -1330,7 +1330,7 @@ static void title()
 /**
  * End of assembly, even if there is more after.
  */
-static void end()
+private void end()
 {
     argcheck(lab.empty && a1.empty && a2.empty);
     lineno = lineno.max - 1;
@@ -1339,7 +1339,7 @@ static void end()
 /**
  * Get an 8-bit or 16-bit immediate.
  */
-static void imm(int type)
+private void imm(int type)
 {
     ushort num;
     string arg;
@@ -1377,7 +1377,7 @@ static void imm(int type)
 /**
  * Get a 16-bit address.
  */
-static void a16()
+private void a16()
 {
     ushort num;
     bool found = false;
@@ -1408,7 +1408,7 @@ static void a16()
 /**
  * Return the 16 bit register offset.
  */
-static int regMod16()
+private int regMod16()
 {
     if (a1 == "b") {
         return 0x00;
@@ -1437,7 +1437,7 @@ static int regMod16()
 /**
  * Return the 8-bit register offset.
  */
-static int regMod8(string reg)
+private int regMod8(string reg)
 {
     if (reg == "b")
         return 0x00;
@@ -1465,7 +1465,7 @@ static int regMod8(string reg)
 /**
  * Check arguments.
  */
-static void argcheck(bool passed)
+private void argcheck(bool passed)
 {
     if (passed == false)
         err("arguments not correct for mnemonic: " ~ op);
@@ -1474,7 +1474,7 @@ static void argcheck(bool passed)
 /**
  * Check if a number is decimal or hex.
  */
-static ushort numcheck(string input)
+private ushort numcheck(string input)
 {
     ushort num;
 
@@ -1491,7 +1491,7 @@ static ushort numcheck(string input)
  * Our syntax differs a little from the CP/M assembler.
  * And it only deals with simple expressions.
  */
-static ushort dollar()
+private ushort dollar()
 {
     ushort num = addr;
 
@@ -1516,7 +1516,7 @@ static ushort dollar()
 /**
  * Nice error messages.
  */
-static void err(string msg)
+private void err(string msg)
 {
     stderr.writeln("a80: " ~ to!string(lineno + 1) ~ ": " ~ msg);
     enforce(0);
