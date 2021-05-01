@@ -73,7 +73,7 @@ private symtab[] stab;
  * Pass 1 gathers symbols and their addresses/values.
  * Pass 2 emits code.
  */
-private void assemble(string[] lines, string outfile)
+private int assemble(string[] lines, string outfile)
 {
     pass = 1;
     for (lineno = 0; lineno < lines.length; lineno++) {
@@ -90,6 +90,8 @@ private void assemble(string[] lines, string outfile)
     /* Only output final executable if there are no errors.  */
     if (!errors)
         fileWrite(outfile);
+
+    return errors ? 1 : 0;
 }
 
 /**
@@ -1540,14 +1542,14 @@ private void err(string msg, int passprint)
 /**
  * All good things start with a single function.
  */
-void main(string[] args)
+int main(string[] args)
 {
     /**
      * Make sure the user provides only one input file.
      */
     if (args.length != 2) {
         stderr.writeln("usage: a80 file.asm");
-        return;
+        return 1;
     }
 
     /**
@@ -1564,5 +1566,5 @@ void main(string[] args)
     /**
      * Do the work.
      */
-    assemble(lines, outfile);
+    return assemble(lines, outfile);
 }
