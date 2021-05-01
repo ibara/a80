@@ -16,6 +16,11 @@ private size_t lineno;
  */
 private int pass;
 
+/*
+ * Did we encounter any errors?
+ */
+private bool errors;
+
 /**
  * Output stored in memory until we're finished.
  */
@@ -31,6 +36,12 @@ private ushort addr;
  */
 enum IMM8 = 8;
 enum IMM16 = 16;
+
+/**
+ * Fancy pass constants
+ */
+enum PASS1 = 1;
+enum PASS2 = 2;
 
 /**
  * Intel 8080 assembler instruction.
@@ -76,7 +87,9 @@ private void assemble(string[] lines, string outfile)
         process();
     }
 
-    fileWrite(outfile);
+    /* Only output final executable if there are no errors.  */
+    if (!errors)
+        fileWrite(outfile);
 }
 
 /**
@@ -188,7 +201,7 @@ private void parse(string line) {
         }
 
         if (line[i] != '\'')
-            err("unterminated string");
+            err("unterminated string", PASS1);
 
         i++;
     } else {
@@ -418,7 +431,7 @@ private void process()
     else if (op == "end")
         end();
     else
-        err("unknown mnemonic: " ~ op);
+        err("unknown mnemonic: " ~ op, PASS1);
 }
 
 /**
@@ -452,7 +465,7 @@ private void addsym()
 {
     for (size_t i = 0; i < stab.length; i++) {
         if (lab == stab[i].lab)
-            err("duplicate label: " ~ lab);
+            err("duplicate label: " ~ lab, PASS1);
     }
 
     symtab newsym = { lab, addr };
@@ -489,7 +502,7 @@ private void stax()
     else if (a1 == "d")
         passAct(1, 0x12);
     else
-        err("stax only takes b or d");
+        err("stax only takes b or d", PASS1);
 }
 
 /**
@@ -558,7 +571,7 @@ private void ldax()
     else if (a1 == "d")
         passAct(1, 0x1a);
     else
-        err("ldax only takes b or d");
+        err("ldax only takes b or d", PASS1);
 }
 
 /**
@@ -842,7 +855,7 @@ private void rst()
     if (offset >= 0 && offset <= 7)
         passAct(1, 0xc7 + (offset * 8));
     else
-        err("invalid reset vector: " ~ to!string(offset));
+        err("invalid reset vector: " ~ to!string(offset), PASS1);
 }
 
 /**
@@ -1219,7 +1232,7 @@ private void equ()
     ushort value;
 
     if (lab.empty)
-        err("must have a label in equ statement");
+        err("must have a label in equ statement", PASS1);
 
     if (a1[0] == '$')
         value = dollar();
@@ -1303,7 +1316,7 @@ private void org()
         if (pass == 1)
             addr = numcheck(a1);
     } else {
-        err("org must take a number");
+        err("org must take a number", PASS1);
     }
 }
 
@@ -1363,7 +1376,7 @@ private void imm(int type)
             }
 
             if (!found)
-                err("label " ~ arg ~ " not defined");
+                err("label " ~ arg ~ " not defined", PASS2);
         }
     }
 
@@ -1395,7 +1408,7 @@ private void a16()
 
         if (pass == 2) {
             if (!found)
-                err("label " ~ a1 ~ " not defined");
+                err("label " ~ a1 ~ " not defined", PASS2);
         }
     }
 
@@ -1420,14 +1433,14 @@ private int regMod16()
         if (op == "pop" || op == "push")
             return 0x30;
         else
-            err("psw may not be used with " ~ op);
+            err("psw may not be used with " ~ op, PASS1);
     } else if (a1 == "sp") {
         if (op != "pop" && op != "push")
             return 0x30;
         else
-            err("sp may not be used with " ~ op);
+            err("sp may not be used with " ~ op, PASS1);
     } else {
-        err("invalid register for " ~ op);
+        err("invalid register for " ~ op, PASS1);
     }
 
     /* This will never be reached, but quiets gdc.  */
@@ -1456,7 +1469,7 @@ private int regMod8(string reg)
     else if (reg == "a")
         return 0x07;
     else
-        err("invalid register " ~ reg);
+        err("invalid register " ~ reg, PASS1);
 
     /* This will never be reached, but quiets gdc.  */
     return 0;
@@ -1468,7 +1481,7 @@ private int regMod8(string reg)
 private void argcheck(bool passed)
 {
     if (passed == false)
-        err("arguments not correct for mnemonic: " ~ op);
+        err("arguments not correct for mnemonic: " ~ op, PASS1);
 }
 
 /**
@@ -1507,7 +1520,7 @@ private ushort dollar()
         else if (a1[1] == '%')
             num %= numcheck(a1[2..$]);
         else
-            err("invalid operator in equ");
+            err("invalid operator in equ", PASS1);
     }
 
     return num;
@@ -1516,10 +1529,12 @@ private ushort dollar()
 /**
  * Nice error messages.
  */
-private void err(string msg)
+private void err(string msg, int passprint)
 {
-    stderr.writeln("a80: " ~ to!string(lineno + 1) ~ ": " ~ msg);
-    enforce(0);
+    if (passprint == pass)
+        stderr.writeln("a80: " ~ to!string(lineno + 1) ~ ": " ~ msg);
+
+    errors = true;
 }
 
 /**
