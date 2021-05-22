@@ -75,13 +75,13 @@ private symtab[] stab;
  */
 private int assemble(string[] lines, string outfile)
 {
-    pass = 1;
+    pass = PASS1;
     for (lineno = 0; lineno < lines.length; lineno++) {
         parse(lines[lineno]);
         process();
     }
 
-    pass = 2;
+    pass = PASS2;
     for (lineno = 0; lineno < lines.length; lineno++) {
         parse(lines[lineno]);
         process();
@@ -441,7 +441,7 @@ private void process()
  */
 private void passAct(ushort size, int outbyte)
 {
-    if (pass == 1) {
+    if (pass == PASS1) {
         /* Add new symbol if we have a label.  */
         if (!lab.empty)
             addsym();
@@ -855,7 +855,7 @@ private void rst()
     argcheck(!a1.empty && a2.empty);
     auto offset = to!int(a1, 10);
     if (offset >= 0 && offset <= 7)
-        passAct(1, 0xc7 + (offset * 8));
+        passAct(1, 0xc7 + (offset << 3));
     else
         err("invalid reset vector: " ~ to!string(offset), PASS1);
 }
@@ -1241,7 +1241,7 @@ private void equ()
     else
         value = numcheck(a1);
 
-    if (pass == 1) {
+    if (pass == PASS1) {
        auto temp = addr;
        addr = value;
        addsym();
@@ -1260,7 +1260,7 @@ private void db()
         auto num = numcheck(a1);
         passAct(1, num);
     } else {
-        if (pass == 1) {
+        if (pass == PASS1) {
             if (!lab.empty)
                 addsym();
             addr += a1.length;
@@ -1279,7 +1279,7 @@ private void dw()
 {
     argcheck(!a1.empty && a2.empty);
 
-    if (pass == 1) {
+    if (pass == PASS1) {
         if (!lab.empty)
             addsym();
     }
@@ -1295,7 +1295,7 @@ private void ds()
 {
     argcheck(!a1.empty && a2.empty);
 
-    if (pass == 1) {
+    if (pass == PASS1) {
         if (!lab.empty)
             addsym();
     } else {
@@ -1315,7 +1315,7 @@ private void org()
     argcheck(lab.empty && !a1.empty && a2.empty);
 
     if (isDigit(a1[0])) {
-        if (pass == 1)
+        if (pass == PASS1)
             addr = numcheck(a1);
     } else {
         err("org must take a number", PASS1);
@@ -1368,7 +1368,7 @@ private void imm(int type)
     if (isDigit(arg[0])) {
         num = numcheck(arg);
     } else {
-        if (pass == 2) {
+        if (pass == PASS2) {
             for (size_t i = 0; i < stab.length; i++) {
                 if (arg == stab[i].lab) {
                     num = stab[i].value;
@@ -1382,7 +1382,7 @@ private void imm(int type)
         }
     }
 
-    if (pass == 2) {
+    if (pass == PASS2) {
         output ~= cast(ubyte)(num & 0xff);
         if (type == IMM16)
             output ~= cast(ubyte)((num >> 8) & 0xff);
@@ -1408,13 +1408,13 @@ private void a16()
             }
         }
 
-        if (pass == 2) {
+        if (pass == PASS2) {
             if (!found)
                 err("label " ~ a1 ~ " not defined", PASS2);
         }
     }
 
-    if (pass == 2) {
+    if (pass == PASS2) {
         output ~= cast(ubyte)(num & 0xff);
         output ~= cast(ubyte)((num >> 8) & 0xff);
     }
