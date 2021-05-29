@@ -1400,15 +1400,15 @@ private void a16()
     if (isDigit(a1[0])) {
         num = numcheck(a1);
     } else {
-        for (size_t i = 0; i < stab.length; i++) {
-            if (a1 == stab[i].lab) {
-                num = stab[i].value;
-                found = true;
-                break;
-            }
-        }
-
         if (pass == PASS2) {
+            for (size_t i = 0; i < stab.length; i++) {
+                if (a1 == stab[i].lab) {
+                    num = stab[i].value;
+                    found = true;
+                    break;
+                }
+            }
+
             if (!found)
                 err("label " ~ a1 ~ " not defined", PASS2);
         }
