@@ -109,25 +109,6 @@ private void fileWrite(string outfile) {
 private void parse(string line) {
     size_t i = 0;
 
-    /* Answers the question: Do we have more to process after whitespace?  */
-    bool whitespace()
-    {
-        while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
-               line[i] == ';')) {
-            if (line[i] == ';') {
-                comm = line[i..$];
-                return false;
-            }
-
-            i++;
-        }
-
-        if (i == line.length)
-            return false;
-
-        return true;
-    }
-
     /* Is this the end of the token?  */
     bool endoftoken()
     {
@@ -148,6 +129,7 @@ private void parse(string line) {
     if (line.length == 0)
         return;
 
+    /* Get label.  */
     if (line[i] != ' ' && line[i] != '\t') {
         size_t labend;
         for (; i < line.length; i++) {
@@ -164,9 +146,21 @@ private void parse(string line) {
         }
     }
 
-    if (whitespace() == false)
+    /* Whitespace check.  */
+    while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
+           line[i] == ';')) {
+        if (line[i] == ';') {
+            comm = line[i..$];
+            return;
+        }
+
+        i++;
+    }
+
+    if (i == line.length)
         return;
 
+    /* Get op.  */
     auto opstart = i;
     for (; i < line.length; i++) {
         if (endoftoken()) {
@@ -182,9 +176,21 @@ private void parse(string line) {
         return;
     }
 
-    if (whitespace() == false)
+    /* Whitespace check.  */
+    while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
+           line[i] == ';')) {
+        if (line[i] == ';') {
+            comm = line[i..$];
+            return;
+        }
+
+        i++;
+    }
+
+    if (i == line.length)
         return;
 
+    /* Get first arg.  */
     auto a1start = i;
     if (line[i] == '\'') {
         i++;
@@ -223,9 +229,21 @@ private void parse(string line) {
         }
     }
 
-    if (whitespace() == false)
+    /* Whitespace check.  */
+    while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
+           line[i] == ';')) {
+        if (line[i] == ';') {
+            comm = line[i..$];
+            return;
+        }
+
+        i++;
+    }
+
+    if (i == line.length)
         return;
 
+    /* Get second arg.  */
     auto a2start = i;
     for (; i < line.length; i++) {
         if (endoftoken()) {
@@ -240,7 +258,16 @@ private void parse(string line) {
         return;
     }
 
-    whitespace();
+    /* Whitespace check.  */
+    while (i < line.length && (line[i] == ' ' || line[i] == '\t' ||
+           line[i] == ';')) {
+        if (line[i] == ';') {
+            comm = line[i..$];
+            return;
+        }
+
+        i++;
+    }
 }
 
 /**
