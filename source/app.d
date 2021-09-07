@@ -572,7 +572,7 @@ private void mvi()
 }
 
 /**
- * rcl (0x07)
+ * rlc (0x07)
  */
 private void rlc()
 {
