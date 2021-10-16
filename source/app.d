@@ -67,6 +67,23 @@ struct symtab
 private symtab[] stab;
 
 /**
+ * Array of valid opcodes.
+ * Does not include out and in, since they break the mixin.
+ * Both out and in are handled separately in the matching function.
+ */
+enum opcodes = [ "nop", "lxi", "stax", "inx", "inr", "dcr", "mvi", "rlc",
+                 "dad", "ldax", "dcx", "rrc", "ral", "rar", "shld", "daa",
+                 "lhld", "cma", "sta", "stc", "lda", "cmc", "mov", "hlt",
+                 "add", "adc", "sub", "sbb", "ana", "xra", "ora", "cmp",
+                 "rnz", "pop", "jnz", "jmp", "cnz", "push", "adi", "rst",
+                 "rz", "ret", "jz", "cz", "call", "aci", "rnc", "jnc",
+                 "cnc", "sui", "rc", "jc", "cc", "sbi", "rpo", "jpo",
+                 "xthl", "cpo", "ani", "rpe", "pchl", "jpe", "xchg",
+                 "cpe", "xri", "rp", "jp", "di", "cp", "ori", "rm",
+                 "sphl", "jm", "ei", "cm", "cpi", "equ", "db", "dw", "ds",
+                 "org", "name", "title", "end" ];
+
+/**
  * Top-level assembly function.
  * Everything cascades downward from here.
  * Repeat the parsing twice.
@@ -285,182 +302,23 @@ private void process()
     }
 
     /**
-     * List of all valid mnemonics.
+     * Match opcode to helper function.
      */
-    if (op == "nop")
-        nop();
-    else if (op == "lxi")
-        lxi();
-    else if (op == "stax")
-        stax();
-    else if (op == "inx")
-        inx();
-    else if (op == "inr")
-        inr();
-    else if (op == "dcr")
-        dcr();
-    else if (op == "mvi")
-        mvi();
-    else if (op == "rlc")
-        rlc();
-    else if (op == "dad")
-        dad();
-    else if (op == "ldax")
-        ldax();
-    else if (op == "dcx")
-        dcx();
-    else if (op == "rrc")
-        rrc();
-    else if (op == "ral")
-        ral();
-    else if (op == "rar")
-        rar();
-    else if (op == "shld")
-        shld();
-    else if (op == "daa")
-        daa();
-    else if (op == "lhld")
-        lhld();
-    else if (op == "cma")
-        cma();
-    else if (op == "sta")
-        sta();
-    else if (op == "stc")
-        stc();
-    else if (op == "lda")
-        lda();
-    else if (op == "cmc")
-        cmc();
-    else if (op == "mov")
-        mov();
-    else if (op == "hlt")
-        hlt();
-    else if (op == "add")
-        add();
-    else if (op == "adc")
-        adc();
-    else if (op == "sub")
-        sub();
-    else if (op == "sbb")
-        sbb();
-    else if (op == "ana")
-        ana();
-    else if (op == "xra")
-        xra();
-    else if (op == "ora")
-        ora();
-    else if (op == "cmp")
-        cmp();
-    else if (op == "rnz")
-        rnz();
-    else if (op == "pop")
-        pop();
-    else if (op == "jnz")
-        jnz();
-    else if (op == "jmp")
-        jmp();
-    else if (op == "cnz")
-        cnz();
-    else if (op == "push")
-        push();
-    else if (op == "adi")
-        adi();
-    else if (op == "rst")
-        rst();
-    else if (op == "rz")
-        rz();
-    else if (op == "ret")
-        ret();
-    else if (op == "jz")
-        jz();
-    else if (op == "cz")
-        cz();
-    else if (op == "call")
-        call();
-    else if (op == "aci")
-        aci();
-    else if (op == "rnc")
-        rnc();
-    else if (op == "jnc")
-        jnc();
-    else if (op == "out")
-        i80_out();
-    else if (op == "cnc")
-        cnc();
-    else if (op == "sui")
-        sui();
-    else if (op == "rc")
-        rc();
-    else if (op == "jc")
-        jc();
-    else if (op == "in")
-        i80_in();
-    else if (op == "cc")
-        cc();
-    else if (op == "sbi")
-        sbi();
-    else if (op == "rpo")
-        rpo();
-    else if (op == "jpo")
-        jpo();
-    else if (op == "xthl")
-        xthl();
-    else if (op == "cpo")
-        cpo();
-    else if (op == "ani")
-        ani();
-    else if (op == "rpe")
-        rpe();
-    else if (op == "pchl")
-        pchl();
-    else if (op == "jpe")
-        jpe();
-    else if (op == "xchg")
-        xchg();
-    else if (op == "cpe")
-        cpe();
-    else if (op == "xri")
-        xri();
-    else if (op == "rp")
-        rp();
-    else if (op == "jp")
-        jp();
-    else if (op == "di")
-        di();
-    else if (op == "cp")
-        cp();
-    else if (op == "ori")
-        ori();
-    else if (op == "rm")
-        rm();
-    else if (op == "sphl")
-        sphl();
-    else if (op == "jm")
-        jm();
-    else if (op == "ei")
-        ei();
-    else if (op == "cm")
-        cm();
-    else if (op == "cpi")
-        cpi();
-    else if (op == "equ")
-        equ();
-    else if (op == "db")
-        db();
-    else if (op == "dw")
-        dw();
-    else if (op == "ds")
-        ds();
-    else if (op == "org")
-        org();
-    else if (op == "name")
-        name();
-    else if (op == "title")
-        title();
-    else if (op == "end")
-        end();
-    else
-        err("unknown mnemonic: " ~ op, PASS1);
+    match: switch (op) {
+        static foreach(opstr; opcodes) {
+        case opstr:
+            mixin(opstr)();
+            break match;
+        }
+
+        default:
+            if (op == "out")
+                i80_out();
+            else if (op == "in")
+                i80_in();
+            else
+                err("unknown opcode: " ~ op, 1);
+    }
 }
 
 /**
