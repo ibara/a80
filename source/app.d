@@ -297,7 +297,10 @@ private void process()
      * Or have a totally blank line.
      */
     if (op.empty && a1.empty && a2.empty) {
-        passAct(0, -1);
+        if (pass == PASS1) {
+            if (!lab.empty)
+                addsym();
+        }
         return;
     }
 
@@ -340,8 +343,7 @@ private void passAct(ushort size, int outbyte)
          *   (e.g., immediate or address), we will output that
          *   in a separate helper function.
          */
-        if (outbyte >= 0)
-            output ~= cast(ubyte)outbyte;
+        output ~= cast(ubyte)outbyte;
     }
 }
 
