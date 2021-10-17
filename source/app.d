@@ -352,8 +352,8 @@ private void passAct(ushort size, int outbyte)
  */
 private void addsym()
 {
-    for (size_t i = 0; i < stab.length; i++) {
-        if (lab == stab[i].lab)
+    foreach (st; stab) {
+        if (lab == st.lab)
             err("duplicate label: " ~ lab, PASS1);
     }
 
@@ -1152,8 +1152,8 @@ private void db()
                 addsym();
             addr += a1.length;
         } else {
-            for (size_t i = 0; i < a1.length; i++)
-                output ~= cast(ubyte)a1[i];
+            foreach (c; a1)
+                output ~= cast(ubyte)c;
             addr += a1.length;
         }
     }
@@ -1187,7 +1187,7 @@ private void ds()
             addsym();
     } else {
         auto num = numcheck(a1);
-        for (size_t i = 0; i < num; i++)
+        foreach (i; 0..num)
             output ~= cast(ubyte)0;
     }
 
@@ -1256,9 +1256,9 @@ private void imm(int type)
         num = numcheck(arg);
     } else {
         if (pass == PASS2) {
-            for (size_t i = 0; i < stab.length; i++) {
-                if (arg == stab[i].lab) {
-                    num = stab[i].value;
+            foreach (st; stab) {
+                if (arg == st.lab) {
+                    num = st.value;
                     found = true;
                     break;
                 }
@@ -1288,9 +1288,9 @@ private void a16()
         num = numcheck(a1);
     } else {
         if (pass == PASS2) {
-            for (size_t i = 0; i < stab.length; i++) {
-                if (a1 == stab[i].lab) {
-                    num = stab[i].value;
+            foreach (st; stab) {
+                if (a1 == st.lab) {
+                    num = st.value;
                     found = true;
                     break;
                 }
